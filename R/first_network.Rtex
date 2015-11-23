@@ -1,0 +1,127 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+%\usepackage{subcaption}
+
+% to compile
+% in R GUI:
+% library("knitr")
+% setwd("/Users/bee/Dropbox/work/data/networks/")
+% knit("first_network.Rtex")
+% in folder commandline:
+% pdflatex first_network.tex
+
+\title{Network with 30 genes}
+
+\author{Barbara E Engelhardt}
+
+\begin{document}
+\maketitle
+
+<<loadPackages, cache=TRUE>>=
+library(lattice)
+library(xtable)
+source("code/undirected_graphs.R")
+source("code/visualize_networks.R")
+@
+
+
+<<loadData, cache=TRUE>>==
+# Grab gene subset 30 genes
+genesubset <- read.table("/Users/bee/Dropbox/work/data/networks/data/25PcntDifferentiallyExpdGenes184.dat", as.is=TRUE)
+#genesubset <- read.table("/Users/bee/Dropbox/work/data/networks/data/30genes.dat", as.is=TRUE)
+genes <- read.table("/Users/bee/Dropbox/work/data/networks/data/genes480v3.txt", as.is=TRUE)
+gex <- read.table("/Users/bee/Dropbox/work/data/networks/data/S480RjQ2N.dat", as.is=TRUE)
+@
+
+\end{document}
+
+
+<<buildUndirectedNetwork, dependson='loadData', cache=TRUE>>==
+
+includeg <- c()
+for(i in 1:nrow(genes)) {
+    if (sum(genes[i,1] == genesubset[,2]) > 0) {
+       includeg <- c(includeg, i)
+    }
+}
+print(includeg)
+gexsmall <- gex[,includeg]
+genenamessmall <- genes[includeg,1]
+ggms <- build_shrinkage_ggm(gexsmall, genenamessmall)
+
+visualize_graph(ggms, filename="biggercap184")
+
+plot(ggms, main="Small network CAP data", vertex.label.cex=.6, vertex.size=25)
+
+@ 
+
+\end{document}
+
+\section*{Simple univariate test for trans associations}
+
+As a proof of principle, we will build a network of 100 genes that are
+differentially expressed in the CAP study between statin and buffer
+exposure.
+
+
+%\begin{figure}
+%  \centering
+%<<fig=TRUE,width=12,height=6>>=
+%trellis.par.set(col.whitebg())
+%print(xyplot(Hwt~Bwt|Sex, data=cats, type=c("p", "r")))
+%@  
+%  \caption{The cats data from package MASS.}
+%  \label{fig:cats}
+%\end{figure}
+%\begin{center}
+%\end{center}
+
+\section*{Include directionality}
+
+Using the same networks as above (simulated data networks, CAP
+subnetworks), we will now consider using our multi-trait model with
+Gibbs sampling to estimate edge directions in the networks.
+
+\subsection*{cis-eQTLs}
+
+For each network, we can look at the q-value of testing in part 1
+(univariate association testing) with the joint likelihood in the
+Gibbs sampler. Here we are fixing the parameter $p$, which represents
+the proportion of unassociated neighbors. Even with the wrong
+parameterization $p$, we can check the ranking of the q-values with
+the posterior probability from the Gibbs sampler.
+
+\subsection*{Learn $p$}
+
+Now we put a uniform prior on parameter $p$, the number of
+unassociated neighbors, and we can estimate it from the data.
+
+With a 2 class Bernoulli $Z$, and a uniform prior on $p$, all partitions are equally likely.
+
+\section*{Scaling up to real data from CAP}
+
+<<LargerNetwork, cache=TRUE>>=
+source("undirected_graphs.R")
+
+# get genotypes
+snps <- read.table("/Users/barbara/work/data/lara/s480N-genotypes.out", as.is=T)
+snpssmall <- t(snps[includeg,4:483])
+
+N <- 1000
+directions <- matrix(0,N,N)
+nei <- neighbors(ggmsg,0)
+geno <- snpssmall[,1]
+
+gex = gexsmall
+index = 1
+T = directions
+G = geno
+
+gs_single_node(gexsmall, 1, nei, directions, geno, theta)
+
+dirs <- add_directionality(ggmsg, snpssmall, gexsmall)
+
+@
+
+
+\end{document}
