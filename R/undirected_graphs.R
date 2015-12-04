@@ -226,7 +226,7 @@ build_correlation_graph_differential_2not1 <- function(gex1, gex2, gexnames)
    n = ncol(gex1)
    gex = c()
    for(i in 1:p) {
-      gex = cbind(gex, qqnorm(lm(gex2[i,]~gex1[i,])$residual,plot.it=FALSE)$x)
+      gex = cbind(gex, qqnorm(lm(gex2[i,]~gex1[i,])$residual,plot.it=FALSE)$x)		#Normal quantiles of regression residuals
    }
    return(build_correlation_graph_fdr(gex, gexnames))
 }
