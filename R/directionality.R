@@ -1,6 +1,8 @@
 
+###Use a Gibbs sampler to estimate directionality of a graph; get posteriors of phenotypes lying in a particular category (I, U, D)
+
 # estimate these parameters directly; this can be the prior
-theta = c(0.4, 0.5, 0.1)
+theta = c(0.4, 0.5, 0.1)			#What do sets of phenotypes do the indices correspond to? Assuming last one is Directly affected
 
 
 # assumes genotypes: one per phenotype, same order, -1's if there's no eqtl.

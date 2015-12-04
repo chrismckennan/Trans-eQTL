@@ -36,7 +36,7 @@ network_features <- function(gn)
 # traditional relevance	network	(Butte et al., 2000)
 # GEX data is n		rows (samples) by p columns (genes)
 
-build_correlation_graph <- function(gex, gexnames)
+build_correlation_graph <- function(gex, gexnames)			#Edge weights are correlation p-value, threshholded at 2*0.95/(p^2 - p)
 {
    n = nrow(gex)
    p = ncol(gex)
