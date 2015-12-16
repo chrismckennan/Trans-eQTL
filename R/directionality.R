@@ -45,17 +45,17 @@ gs_single_node <- function(gex, index, nei, T, G, theta) {		#T is complete marix
          T[index,n] = 0      
       }
       # build set of affecteds
-      afflist <- T[index,nei]*(nei)			#A 1 corresponds to 
+      afflist <- T[index,nei]*(nei)			#A 1 corresponds to an arrow pointing TOWARDS gene 'index'
       afflist <- afflist[afflist > 0]
       afflist <- c(afflist, n) #add on current gene as last
-      aff <- cbind(gex[,index],gex[,afflist])
+      aff <- cbind(gex[,index],gex[,afflist])			#Gene expression of gene index and genes that point TOWARDS index; the last column is the gene expression of the neighbor of interest
       znull <- rep(0, length(afflist)+1)
-      bf0 <- MVassoctestfixedz(t(aff), G, c(rep(1,length(afflist)),0), znull)$lbf
-      bf1 <- MVassoctestfixedz(t(aff), G, c(rep(1,length(afflist)),1), znull)$lbf
+      bf0 <- MVassoctestfixedz(t(aff), G, c(rep(1,length(afflist)),0), znull)$lbf		#Neighbor i points away from index; this function is not in either of Barbara's other scripts
+      bf1 <- MVassoctestfixedz(t(aff), G, c(rep(1,length(afflist)),1), znull)$lbf		#Neighbor i points towards index
       reversearrow <- T[n,index]
       bf0 <- (10^bf0)*theta[reversearrow+1]
       bf1 <- (10^bf1)*theta[reversearrow+2]
-      pt <- bf0/(bf0+bf1)
+      pt <- bf0/(bf0+bf1)			#Posterior probability arrow points away from index
       print("Node")
       print(index)
       #print(nei)
@@ -69,7 +69,7 @@ gs_single_node <- function(gex, index, nei, T, G, theta) {		#T is complete marix
       u = rbinom(1,1,pt)
       print(u==1)
       if(u == 0) {
-         T[index,n] = 1
+         T[index,n] = 1			#Record a 1 if neighbor i points towards index
       }      
    }
    return(T)

@@ -2,7 +2,7 @@
 ###Created 151211
 
 ###Input: sufficient statistic, direct effect index, number of independent observations, sigma.a, simgma.a weights, Wishart Prior m, theta
-#If beta = F, then the theta[1] is the prior probability a node is unaffected
+#If beta = F, then the theta[1] is proportional to the prior probability a node is unaffected
 
 ###Output: Posterior probability that each index is an INDIRECT effect; The NA is the direct effect
 
