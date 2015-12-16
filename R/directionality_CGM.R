@@ -35,7 +35,7 @@ Gibbs.dir <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weights.
 			}
 			
 			C.j <- max(log10bfU, log10bfI)
-			post.probU.j <- pU.j*exp( log10bfU - C.j )/( pU.j*exp( log10bfU - C.j ) + (1-pU.j)*exp( log10bfI - C.j ) )
+			post.probU.j <- pU.j*10^( log10bfU - C.j )/( pU.j*10^( log10bfU - C.j ) + (1-pU.j)*10^( log10bfI - C.j ) )
 			
 			is.I.j <- rbinom(1, 1, 1 - post.probU.j)			#Gibbs sampler
 			ind.infer[j] <- is.I.j

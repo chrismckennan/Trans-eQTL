@@ -3,7 +3,7 @@
 
 ###Input: A covariance matrix 'Sigma' for the expression of g and its neighbors, an effect size 'theta' for the cis-eQTL, a partition 'gamma' of genes in the network into Directly affected, Indirectly affected, and Unaffected and a genotype vector for 'n.ind' individuals at s
 
-n.ind <- 1e5		#Number of independent individuals
+n.ind <- 1e4		#Number of independent individuals
 n.nei <- 9			#Number of neighbors of g
 f.s <- 0.1			#Minor Allele Frequency
 Sigma <- create.sigma(n.nei+1)
@@ -14,7 +14,7 @@ U.gam <- (5:(n.nei+1))		##Indices of unaffected neighbors; correspond to indices
 theta = 0.1
 X.s <- rbinom(n=n.ind, size=1, prob=f.s) + rbinom(n=n.ind, size=1, prob=f.s)			#Genotype vector of n.ind individuals under HWE
 
-sigma.a <- c(0.4)				#Prior sd's on effect; used in BF calculation
+sigma.a <- c(0.01, 0.4)				#Prior sd's on effect; used in BF calculation
 weights.sigma <- c(1)					#Relative weights of each element of sigma.a
 m = n.nei + 1					#degrees of freedom used in Wishart Prior; must be at least n.nei + 1
 

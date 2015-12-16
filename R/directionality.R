@@ -7,7 +7,7 @@ theta = c(0.4, 0.5, 0.1)			#What do sets of phenotypes do the indices correspond
 
 # assumes genotypes: one per phenotype, same order, -1's if there's no eqtl.
 # phenotypes: 
-add_directionality <- function(ugraph, genotypes, phenotypes)
+add_directionality <- function(ugraph, genotypes, phenotypes)		##Input is an undirected graph, genotypes, expression data; output is posterior probability of the arrow direction for each node; we can have bidirectional arrows if two genes are directly affected by a cis-eQTL and they directly affect one-another
 {
    N <- length(V(ugraph))
    directions <- matrix(0, N, N)
@@ -20,13 +20,13 @@ add_directionality <- function(ugraph, genotypes, phenotypes)
    dirgibbs = matrix(0,N,N)
    for(iter in 1:iterations) {
     for(i in 1:N) {
-     geno <- genotypes[,i]
-     if(geno[1] > -1) {
-        nei <- neighbors(ugraph,(i-1))
+     geno <- genotypes[,i]			#Genotypes of cis-eQTL for individuals
+     if(geno[1] > -1) {					#Infer arrows if the SNP is an eQTL
+        nei <- neighbors(ugraph,(i-1))			#Indices-1 of neighbors of gene i
 	#print(nei+1)
 	#print("running gibbs")
    	#print(i)
-        directions <- gs_single_node(phenotypes, i, nei+1, directions, geno, theta)
+        directions <- gs_single_node(phenotypes, i, nei+1, directions, geno, theta)		#Draw arrows to and from neighbors of gene i
      }
     }
     dirgibbs = dirgibbs+directions
@@ -34,7 +34,7 @@ add_directionality <- function(ugraph, genotypes, phenotypes)
    return(dirgibbs/iterations)
 }
 
-gs_single_node <- function(gex, index, nei, T, G, theta) {
+gs_single_node <- function(gex, index, nei, T, G, theta) {		#T is complete marix of current directions, G is genotype, theta is prior probability an arrow points one way or the other
    if(is.null(nei) | length(nei) == 0) {
       return(T)
    }
@@ -45,7 +45,7 @@ gs_single_node <- function(gex, index, nei, T, G, theta) {
          T[index,n] = 0      
       }
       # build set of affecteds
-      afflist <- T[index,nei]*(nei)
+      afflist <- T[index,nei]*(nei)			#A 1 corresponds to 
       afflist <- afflist[afflist > 0]
       afflist <- c(afflist, n) #add on current gene as last
       aff <- cbind(gex[,index],gex[,afflist])
