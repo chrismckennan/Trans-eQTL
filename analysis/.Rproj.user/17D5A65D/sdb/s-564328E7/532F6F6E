@@ -1,0 +1,16 @@
+{
+    "contents" : "---\ntitle: \"License\"\n---\n\n**Last updated:** `r Sys.Date()`\n\n**Code version:** `r system(\"git log -1 --format='%H'\", intern = TRUE)`\n\n## Code\n\nThe code is licensed under the [GPLv3][code-license].\nWe use multiple [Bioconductor][bioc] packages which are GPL'd.\n\n[bioc]: https://www.bioconductor.org/about\n\n## Site\n\nThe text is currently licensed under a [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License][site-license].\nA more permissive license will be applied upon future publication of the results.\n\n[code-license]: https://www.gnu.org/licenses/gpl-3.0.txt\n[site-license]: https://creativecommons.org/licenses/by-nc-nd/4.0/\n",
+    "created" : 1450713951493.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1922898224",
+    "id" : "532F6F6E",
+    "lastKnownWriteTime" : 1450222920,
+    "path" : "~/Desktop/Uchicago/StephensGroup/TranseQTLs_EnglehardtStephens/GitWork/Trans-eQTL/analysis/license.Rmd",
+    "project_path" : "license.Rmd",
+    "properties" : {
+    },
+    "source_on_save" : false,
+    "type" : "r_markdown"
+}
