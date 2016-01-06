@@ -168,6 +168,86 @@ Log10BF <- function(suff.stat, D.gam, n.ind, sigma.a, weights.sigma, m) {
 	return(list(BF.mat = BF.mat, D.ind = D.gam))
 }
 
+Log10BF.all <- function(suff.stat, D.gam, n.ind, sigma.a, weights.sigma, m) {			##Tests ALL possible permutations, inluding direct effects
+	var.a <- sigma.a^2
+	weights <- weights.sigma/sum(weights.sigma)
+	
+	SYY <- suff.stat$SYY
+	sxx <- suff.stat$sxx
+	SYX <- suff.stat$SYX
+	SY1 <- suff.stat$SY1
+	mu.g <- suff.stat$mu.g
+	
+	n.nei <- dim(SYY)[1] - 1	
+	
+	BF.mat <- array(2, dim=c(3^n.nei, n.nei + 2))			#Columns correspond to genes in the network; 0: Unaffected, 1: Indirectly affected, 2: Directly affected; The gene corresponding to the cis-eQTL is assumed to be Directly affected by g
+	tmp.list <- list()
+	for (i in 1:n.nei) {
+		tmp.list[[i]] <- c(0,1,2)
+	}
+	BF.mat[,(1:(n.nei+1))[-D.gam]] <- as.matrix(expand.grid(tmp.list))		#BF.mat now contains all possible groupings, while keeping the direct effect fixed at 1
+	
+
+	for (i in 1:nrow(BF.mat)) {
+		U.index <- which(BF.mat[i,] == 0)			#Indices of unaffected genes
+		D.index <- which(BF.mat[i,1:(n.nei + 1)] == 2)			#Indices of directly affected genes
+		n.u <- length(U.index)
+		n.d <- length(D.index)
+		
+		##Build XX1 = 1/n.ind * [1 Y_u X_s]' [1 Y_u X_s] and XX0 = 1/n.ind * [1 Y_u]' [1 Y_u]##
+		
+		XX1 <- array(1, dim=c(n.u+2, n.u+2))
+		
+		if (n.u > 0) {
+			XX1[1, 2:(n.u+2)] = c(SY1[U.index], mu.g)
+			XX1[2:(n.u+2), 1] = c(SY1[U.index], mu.g)
+			XX1[n.u+2, 2:(n.u+2)] = c(SYX[U.index], sxx)
+			XX1[2:(n.u+1), n.u+2] = SYX[U.index]
+			XX1[2:(n.u+1), 2:(n.u+1)] = SYY[U.index, U.index]
+		
+			XX0 <- XX1[1:(n.u+1), 1:(n.u+1)]	
+		} else {
+			XX1[1,2] <- mu.g
+			XX1[2,1] <- mu.g
+			XX1[2,2] <- sxx
+			
+			XX0 <- matrix(1, 1, 1)
+		}
+						
+		##Build RSS1 = 1/n.ind * RSS(Y_D | [1 Y_u X_s], K) and RSS0 = 1/n.ind * RSS(Y_D | [1 Y_u], 0)##
+		
+		vec.i <- array(0, dim=c(n.u+2, n.d))  		#(n.u + 2) x n.d matrix
+		vec.i[1,] <- SY1[D.index]
+		if (n.u > 0) {
+			vec.i[2:(n.u+1),] <- SYY[U.index, D.index]
+		}
+		vec.i[(n.u+2),] <- SYX[D.index]
+		#vec.i <- rbind(cbind(SY1[D.index]), cbind(SYY[U.index, D.index]), cbind(SYX[D.index]))		
+		
+		if (n.u > 0) {
+			RSS0 <- SYY[D.index, D.index] - t(vec.i[-(n.u+2),]) %*% solve(XX0, vec.i[-(n.u+2),])
+		} else {
+			RSS0 <- SYY[D.index, D.index] - t(rbind(vec.i[1,])) %*% rbind(vec.i[1,])
+		}		
+		
+		log.bf.i <- rep(0, length=length(var.a))
+		for (s in 1:length(var.a)) {
+			tmp.mat.i <- XX1
+			tmp.mat.i[n.u+2, n.u+2] <- tmp.mat.i[n.u+2, n.u+2] + 1/var.a[s]/n.ind		#tmp.mat.i = XX1 + 1/n.ind * K
+			RSS1 <- SYY[D.index, D.index] - t(vec.i) %*% solve(tmp.mat.i, vec.i)
+			log.bf.i[s] <- n.d/2 * ( -log(var.a[s]) + log(det(XX0)) - log(n.ind) - log(det(tmp.mat.i)) ) + (n.ind + m - (n.nei + 1) + n.u + n.d)/2 * ( log(det(RSS0)) - log(det(RSS1)) )
+		}
+		
+		##Compute log Bayes Factor##
+		
+		BF.mat[i, n.nei + 2] = log( sum(weights*exp(log.bf.i - max(log.bf.i))) ) + max(log.bf.i)
+	}
+	BF.mat[,n.nei + 2] <- BF.mat[,n.nei + 2]/log(10)		#Log10 BF
+	
+	return(list(BF.mat = BF.mat, D.ind = D.gam))
+}
+
+
 
 #Compute log10 Bayes factor for a single partition gamma
 #Inputs are the sufficient statistics, the indices corresponding to the directly affected and unaffected genes, #independent samples, vector of sigma.a's, weights for sigma.a's, m in Wisharg prio
@@ -233,3 +313,80 @@ Log10BF.sing <- function(suff.stat, D.gam, U.gam, n.ind, sigma.a, weights.sigma,
 	return(list(log10BF = log10BF, D.ind = D.gam, I.ind = (1:(n.nei+1))[ -c(D.gam,U.gam) ], U.ind=U.gam))
 }
 
+
+#Compute log10 Bayes factor for a single partition gamma
+#Inputs are the sufficient statistics, the indices corresponding to the directly affected and unaffected genes, #independent samples, vector of sigma.a's, weights for sigma.a's, m in Wisharg prio
+#Output is the log10BF and the indices corresponding to the partitions
+#This differs from the above in that is allows for more than one direct effect (i.e. performs multivariate Bayesian regression)
+
+Log10BF.sing.all <- function(suff.stat, D.index, U.index, n.ind, sigma.a, weights.sigma, m) {
+	n.u <- length(U.index)
+	n.d <- length(D.index)
+	
+	if (n.d == 0) {		#If there is no direct effect, the gene has no influence on the network
+		return(list(log10BF = 0, D.ind = D.index, I.ind = (1:(n.nei+1))[ -c(D.index,U.index) ], U.ind=U.index))
+	}
+
+	var.a <- sigma.a^2
+	weights <- weights.sigma/sum(weights.sigma)
+	
+	SYY <- suff.stat$SYY
+	sxx <- suff.stat$sxx
+	SYX <- suff.stat$SYX
+	SY1 <- suff.stat$SY1
+	mu.g <- suff.stat$mu.g
+	
+	n.nei <- dim(SYY)[1] - 1	
+		
+	##Build XX1 = 1/n.ind * [1 Y_u X_s]' [1 Y_u X_s] and XX0 = 1/n.ind * [1 Y_u]' [1 Y_u]##
+		
+	XX1 <- array(1, dim=c(n.u+2, n.u+2))
+	
+	if (n.u > 0) {
+		XX1[1, 2:(n.u+2)] = c(SY1[U.index], mu.g)
+		XX1[2:(n.u+2), 1] = c(SY1[U.index], mu.g)
+		XX1[n.u+2, 2:(n.u+2)] = c(SYX[U.index], sxx)
+		XX1[2:(n.u+1), n.u+2] = SYX[U.index]
+		XX1[2:(n.u+1), 2:(n.u+1)] = SYY[U.index, U.index]
+	
+		XX0 <- XX1[1:(n.u+1), 1:(n.u+1)]	
+	} else {
+		XX1[1,2] <- mu.g
+		XX1[2,1] <- mu.g
+		XX1[2,2] <- sxx
+		
+		XX0 <- matrix(1, 1, 1)
+	}
+					
+	##Build RSS1 = 1/n.ind * RSS(Y_D | [1 Y_u X_s], K) and RSS0 = 1/n.ind * RSS(Y_D | [1 Y_u], 0)##
+	
+	vec <- array(0, dim=c(n.u+2, n.d))  		#(n.u + 2) x n.d matrix
+	vec[1,] <- SY1[D.index]
+	if (n.u > 0) {
+		vec[2:(n.u+1),] <- SYY[U.index, D.index]
+	}
+	vec[(n.u+2),] <- SYX[D.index]
+	#vec <- rbind(cbind(SY1[D.index]), cbind(SYY[U.index, D.index]), cbind(SYX[D.index]))		
+	
+	if (n.u > 0) {
+		RSS0 <- SYY[D.index, D.index] - t(vec[-(n.u+2),]) %*% solve(XX0, vec[-(n.u+2),])
+	} else {
+		RSS0 <- SYY[D.index, D.index] - t(rbind(vec[1,])) %*% rbind(vec[1,])
+	}		
+	
+	log.bf <- rep(0, length=length(var.a))
+	for (s in 1:length(var.a)) {
+		tmp.mat <- XX1
+		tmp.mat[n.u+2, n.u+2] <- tmp.mat[n.u+2, n.u+2] + 1/var.a[s]/n.ind		#tmp.mat = XX1 + 1/n.ind * K
+		RSS1 <- SYY[D.index, D.index] - t(vec) %*% solve(tmp.mat, vec)
+		log.bf[s] <- n.d/2 * ( -log(var.a[s]) + log(det(XX0)) - log(n.ind) - log(det(tmp.mat)) ) + (n.ind + m - (n.nei + 1) + n.u + n.d)/2 * ( log(det(RSS0)) - log(det(RSS1)) )
+	}
+	
+	##Compute log Bayes Factor##
+	
+	logBF = log( sum(weights*exp(log.bf - max(log.bf))) ) + max(log.bf)
+
+	log10BF <- logBF/log(10)		#Log10 BF
+	
+	return(list(log10BF = log10BF, D.ind = D.index, I.ind = (1:(n.nei+1))[ -c(D.index,U.index) ], U.ind=U.index))
+}
