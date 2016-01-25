@@ -4,9 +4,9 @@ Chr	1
 Gene	ENSG00000163220.10
 SNP	rs61803116
 Gene_list	ENSG00000163220.10	ENSG00000143546.5
-Gene expression covariance
+Gene expression stats (Y^T * Y): 
 285.302015061	249.516226174
 249.516226174	285.302015061
-Genotype covariance	27.3967421898
-Gene expression - Genotype covariance
+Genotype stats (X^T * X): 	27.3967421898
+Gene expression - Genotype stats (Y^T * X): 
 17.7563378334	11.3228560678

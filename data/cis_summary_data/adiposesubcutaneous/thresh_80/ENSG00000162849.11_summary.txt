@@ -4,9 +4,9 @@ Chr	1
 Gene	ENSG00000162849.11
 SNP	rs1173849
 Gene_list	ENSG00000123500.5	ENSG00000162849.11
-Gene expression covariance
+Gene expression stats (Y^T * Y): 
 285.302015061	229.115538507
 229.115538507	285.302015061
-Genotype covariance	57.9118644068
-Gene expression - Genotype covariance
+Genotype stats (X^T * X): 	57.9118644068
+Gene expression - Genotype stats (Y^T * X): 
 31.2193176801	31.256357336
