@@ -1,0 +1,12 @@
+Tissue	wholeblood
+N_samples	334
+Chr	7
+Gene	ENSG00000164692.13
+SNP	rs58178157
+Gene_list	ENSG00000164692.13	ENSG00000168542.8
+Gene expression stats (Y^T * Y): 
+324.073016144	293.293749078
+293.293749078	324.073016144
+Genotype stats (X^T * X): 	34.1361438323
+Gene expression - Genotype stats (Y^T * X): 
+19.3409524313	17.6111777846
