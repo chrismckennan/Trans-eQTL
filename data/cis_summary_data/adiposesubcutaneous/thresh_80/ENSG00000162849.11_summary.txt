@@ -1,0 +1,12 @@
+Tissue	adiposesubcutaneous
+N_samples	295
+Chr	1
+Gene	ENSG00000162849.11
+SNP	rs1173849
+Gene_list	ENSG00000123500.5	ENSG00000162849.11
+Gene expression covariance
+285.302015061	229.115538507
+229.115538507	285.302015061
+Genotype covariance	57.9118644068
+Gene expression - Genotype covariance
+31.2193176801	31.256357336
