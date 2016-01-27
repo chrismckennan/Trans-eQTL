@@ -1,0 +1,12 @@
+Tissue	muscleskeletal
+N_samples	358
+Chr	10
+Gene	ENSG00000119927.9
+SNP	rs943263
+Gene_list	ENSG00000099194.5	ENSG00000119927.9
+Gene expression stats (Y^T * Y): 
+347.94485817	214.196041112
+214.196041112	347.94485817
+Genotype stats (X^T * X): 	47.0167597765
+Gene expression - Genotype stats (Y^T * X): 
+-11.7064281199	-21.7927832527
