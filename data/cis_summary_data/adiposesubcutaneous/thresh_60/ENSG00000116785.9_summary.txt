@@ -1,0 +1,12 @@
+Tissue	adiposesubcutaneous
+N_samples	295
+Chr	1
+Gene	ENSG00000116785.9
+SNP	rs11805258
+Gene_list	ENSG00000116785.9	ENSG00000244414.2
+Gene expression stats (Y^T * Y): 
+285.302015061	171.470177333
+171.470177333	285.302015061
+Genotype stats (X^T * X): 	138.803803342
+Gene expression - Genotype stats (Y^T * X): 
+-83.7005402476	-90.5000382658
