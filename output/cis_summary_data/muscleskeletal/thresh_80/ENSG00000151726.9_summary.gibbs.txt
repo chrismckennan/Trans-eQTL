@@ -1,0 +1,8 @@
+Tissue	muscleskeletal
+N_samples	358
+Chr	4
+Gene	ENSG00000151726.9
+SNP	rs66921474
+Posterior probability each gene is UNAFFECTED by SNP:
+ENSG00000096060.10	ENSG00000151726.9
+0.057	0.041
