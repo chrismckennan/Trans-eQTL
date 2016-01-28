@@ -13,8 +13,9 @@ Gibbs.dir <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weights.
 	ind.infer <- rep(0, (n.nei+1))			##0 is unaffected, 1 is indirectly affected, 2 is directly affected
 	ind.infer[D.gam] <- 2
 	
-	iterate.index <- (1:(n.nei+1))[-D.gam]
-	post.mean <- rep(0, n.nei+1); post.mean[D.gam] <- NA				#Posterior mean that index is unaffected by cis-eQTL
+	#iterate.index <- (1:(n.nei+1))[-D.gam]
+	iterate.index <- (1:(n.nei+1))
+	post.mean <- rep(0, n.nei+1); #post.mean[D.gam] <- NA				#Posterior mean that index is unaffected by cis-eQTL
 	
 	for (i in 1:n.iter) {
 		
@@ -33,8 +34,8 @@ Gibbs.dir <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weights.
 			log10bfD <- Log10BF.sing.all(suff.stat, which(tmp.2 == 2), which(tmp.2 == 0), n.ind, sigma.a, weights.sigma, m)$log10BF
 			
 			if (dirichlet) {
-				pU.j <- ( theta[1] + length(which(ind.infer[-j] == 0)) )/(sum(theta) + n.nei - 1)			#If we use a beta prior, find p(Node j is Unaffected | Rest of Node Assignments)
-				pI.j <- ( theta[2] + length(which(ind.infer[-j] == 1)) )/(sum(theta) + n.nei - 1)
+				pU.j <- ( theta[1] + length(which(ind.infer[-j] == 0)) )/(sum(theta) + n.nei)			#If we use a Dirichlet prior, find p(Node j is Unaffected | Rest of Node Assignments)
+				pI.j <- ( theta[2] + length(which(ind.infer[-j] == 1)) )/(sum(theta) + n.nei)
 				pD.j <- 1 - pU.j - pI.j
 			} else {
 				pU.j <- theta[1]

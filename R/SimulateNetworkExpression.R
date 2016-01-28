@@ -86,7 +86,7 @@ Sim.gex <- function(Sigma.in, D.gam, I.gam, U.gam, theta, X.s, lambda=1) {
 Suff.stat <- function(Y.gex, X.s) {
 	n.ind <- length(X.s)
 	SYY <- 1/n.ind * t(Y.gex) %*% Y.gex		#(n.nei + 1) x (n.nei + 1) matrix
-	sxx <- 1/n.ind * sum(X.s*X.s)					#a scalar ~ 2f.s(1-f.s)
+	sxx <- 1/n.ind * sum(X.s*X.s)					#a scalar ~ 2f.s^2 + 2f.s
 	SYX <- as.vector(1/n.ind * t(Y.gex) %*% cbind(X.s))		#a (n.nei + 1) vector
 	SY1 <- apply(Y.gex, 2, mean)		#a (n.nei + 1) vector
 	mu.g <- mean(X.s)			#a scalar
@@ -322,10 +322,6 @@ Log10BF.sing <- function(suff.stat, D.gam, U.gam, n.ind, sigma.a, weights.sigma,
 Log10BF.sing.all <- function(suff.stat, D.index, U.index, n.ind, sigma.a, weights.sigma, m) {
 	n.u <- length(U.index)
 	n.d <- length(D.index)
-	
-	if (n.d == 0) {		#If there is no direct effect, the gene has no influence on the network
-		return(list(log10BF = 0, D.ind = D.index, I.ind = (1:(n.nei+1))[ -c(D.index,U.index) ], U.ind=U.index))
-	}
 
 	var.a <- sigma.a^2
 	weights <- weights.sigma/sum(weights.sigma)
@@ -337,6 +333,10 @@ Log10BF.sing.all <- function(suff.stat, D.index, U.index, n.ind, sigma.a, weight
 	mu.g <- suff.stat$mu.g
 	
 	n.nei <- dim(SYY)[1] - 1	
+	
+	if (n.d == 0) {		#If there is no direct effect, the gene has no influence on the network
+		return(list(log10BF = 0, D.ind = D.index, I.ind = (1:(n.nei+1))[ -c(D.index,U.index) ], U.ind=U.index))
+	}
 		
 	##Build XX1 = 1/n.ind * [1 Y_u X_s]' [1 Y_u X_s] and XX0 = 1/n.ind * [1 Y_u]' [1 Y_u]##
 		
