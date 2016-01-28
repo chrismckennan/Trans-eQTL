@@ -30,8 +30,8 @@ source("../R/directionality_CGM.R")    #Gibbs Sampler
 Directory in which to perform the analysis. Note that this is the adipose tissue. Results are saved in output, with the same directory structure as the summary data were stored in data
 
 ```{r}
-directory.in <- '../data/cis_summary_data/muscleskeletal/thresh_80'
-directory.out <- '../output/cis_summary_data/muscleskeletal/thresh_80'
+directory.in <- '../data/cis_summary_data/wholeblood/thresh_80'
+directory.out <- '../output/cis_summary_data/wholeblood/thresh_80'
 ```
 
 Create directory structure to house files

@@ -1,0 +1,8 @@
+Tissue	wholeblood
+N_samples	334
+Chr	3
+Gene	ENSG00000174748.14
+SNP	rs9821257
+Posterior probability each gene is UNAFFECTED by SNP:
+ENSG00000174748.14	ENSG00000089157.11
+0.0125	0.0115
