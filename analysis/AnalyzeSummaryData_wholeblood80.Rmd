@@ -107,6 +107,7 @@ for (file in all_files) {
     gibbs.mat <- rbind(gibbs$post.mean)
     colnames(gibbs.mat) <- Gene.names
     write.table(gibbs.mat, out.file, col.names=T, row.names=F, append=F, quote=F, sep="\t")
+    all.post.probs <- c(all.post.probs, gibbs$post.mean[-gibbs$D.ind])
   } else {
     gibbs.file = readLines(out.file)
     tmp.probs <- as.numeric(strsplit(gibbs.file[8], split='\t', perl=T)[[1]])
