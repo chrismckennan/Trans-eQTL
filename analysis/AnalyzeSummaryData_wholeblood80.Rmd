@@ -59,6 +59,7 @@ if (!file.exists(directory.out)) {
 all_files <- list.files(directory.in)
 N.genes <- rep(0, length(all_files))    #Number of genes in each network
 PUP.source <- rep(0, length(all_files))  #Posterior probability the gene cis to the eQTL is unaffected
+all.post.probs <- c()   #To be used to generate a ROC plot
 
 count = 1
 for (file in all_files) {
@@ -108,8 +109,9 @@ for (file in all_files) {
     write.table(gibbs.mat, out.file, col.names=T, row.names=F, append=F, quote=F, sep="\t")
   } else {
     gibbs.file = readLines(out.file)
-    tmp.pup = as.numeric(strsplit(gibbs.file[8], split='\t', perl=T)[[1]])[which(Gene.names == gene)]
-    PUP.source[count] = tmp.pup
+    tmp.probs <- as.numeric(strsplit(gibbs.file[8], split='\t', perl=T)[[1]])
+    PUP.source[count] = tmp.probs[which(Gene.names == gene)]
+    all.post.probs <- c(all.post.probs, tmp.probs[-which(Gene.names == gene)])
   }
   
   #print(paste0(as.character(count), " of ", as.character(length(all_files))))
@@ -119,13 +121,46 @@ for (file in all_files) {
 
 Plot the posterior probability a gene is affected by SNP as a function of the network size:
 ```{r PlotPAP}
-jpeg('AnalyzeSummaryData_wholeblood80.jpeg', width = 550)
+plot(N.genes, 1-PUP.source, main='Posterior Probability of Source Gene as a Function of Network Size', xlab='Number of Genes in Network', ylab='Posterior Probability Source Gene is Affected by SNP')
+
+jpeg('AnalyzeSummaryData_wholeblood80_NetworkSize.jpeg', width = 550)
 plot(N.genes, 1-PUP.source, main='Posterior Probability of Source Gene as a Function of Network Size', xlab='Number of Genes in Network', ylab='Posterior Probability Source Gene is Affected by SNP')
 dev.off()
 ```
 
+Plot an estimated ROC curve:
+```{r ROC}
+all.post.probs <- sort(all.post.probs)   #Posterior prob a gene is NOT a trans eQTL
+est.trans <- sum(1-all.post.probs)   #Expected number of trans genes affected (given the data)
+
+est.FDR <- rep(0, length(all.post.probs))
+est.FDR[1] <- all.post.probs[1]
+est.sens <- rep(0, length(all.post.probs))
+est.sens[1] <- (1 - all.post.probs[1])/est.trans
+for (i in 2:length(est.FDR)) {
+  est.FDR[i] <- ((i-1)*est.FDR[i-1] + all.post.probs[i])/i
+  est.sens[i] <- est.sens[i-1] + (1 - all.post.probs[i])/est.trans
+}
+plot(est.FDR, est.sens, type="l", main='Estimated ROC Curve for Affected Genes Trans to SNP in Whole Blood', xlab="Estimated (conditional) False Discovery Rate", ylab='Estimated Sensitivity', xlim=c(0, max(0.6, est.FDR)))
+lines(seq(max(est.FDR), 1, length=100), rep(1, 100))
+
+jpeg('AnalyzeSummaryData_wholeblood80_ROC.jpeg', width = 550)
+plot(est.FDR, est.sens, type="l", main='Estimated ROC Curve for Affected Genes Trans to SNP in Whole Blood', xlab="Estimated (conditional) False Discovery Rate", ylab='Estimated Sensitivity', xlim=c(0, max(0.6, est.FDR)))
+lines(seq(max(est.FDR), 1, length=100), rep(1, 100))
+dev.off()
+```
+
+Histgram of posterior probabilities that a gene trans to SNP is affected by SNP
+```{r Histogram}
+hist(1-all.post.probs, breaks=30, xlab="Posterior Probability Gene Trans to SNP is AFFECTED by SNP", ylab="Frequency", main="Histogram of Posterior Probabilities a Trans Gene is AFFECTED by SNP", xlim=c(0,1))
+
+jpeg('AnalyzeSummaryData_wholeblood80_Hist.jpeg', width = 550)
+hist(1-all.post.probs, breaks=30, xlab="Posterior Probability Gene Trans to SNP is AFFECTED by SNP", ylab="Frequency", main="Histogram of Posterior Probabilities a Trans Gene is AFFECTED by SNP", xlim=c(0,1))
+dev.off()
+```
 
 ## Add additional information to output files
+If the information already exists, OrganizeGibbs.pl leaves the file alone
 
 ```bash
 perl OrganizeGibbs.pl ../data/cis_summary_data/wholeblood/thresh_80 ../output/cis_summary_data/wholeblood/thresh_80
