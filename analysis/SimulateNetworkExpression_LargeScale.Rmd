@@ -1,0 +1,189 @@
+---
+title: "Simulate Network Expression on a Large Scale"
+author: "Chris McKennan"
+date: 2016-02-10
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+## Test Model Performance
+The purpose of this file is to test the performance of the Gibbs sampler. I will simulate $N$ networks (i.e. covariance matrices), each with a corresponding effect size for the 'source' gene (i.e. the gene cis to the SNP), a list of indirect effects and a minor allele frequency.
+
+## Upload Source Functions
+
+```{r Source R Functions}
+library('gtools')
+source("../R/directionality_CGM.R")
+source("../R/SimulateNetworkExpression.R")
+```
+
+## User specified input parameters for the simulation
+Below are input parameters the user can specify. For each simulation $j = 1,\ldots, N$, I simulate an effect size $\theta_j \sim N\left( 0, \sigma^2 \right)1\left\lbrace |\theta_j| > \frac{\sigma}{4} \right\rbrace$, a minor allele frequency $f_i \sim U[m_0, m_1]$ and a covariance matrix $\Sigma_j \in \mathbb{R}^{n_{\text{neigh}} + 1 \times n_{\text{neigh}} + 1} \sim \mathcal{W}_{n_{\text{neigh}} + 1}\left( V_j, n_{\text{ind}} \right)$, where $V_j$ is a random covariance matrix with 1's along the diagonal (i.e. we assume that the variability in expression is the same for different genes within the same network). Specifically, 
+\[
+V^{(0)}_j = Z^T Z \text{ for } Z \sim N(0, I_{n_{\text{neigh}} + 1})
+\]
+\[
+V^{(1)}_j = \frac{1}{\max \text{diag}\left( V^{(0)}_j \right)} V^{(0)}_j
+\]
+\[
+V_j = V^{(1)}_j + I_{n_{\text{neigh}+1}} - \text{diag}\left( V^{(1)}_j \right).
+\]
+For each independent individual $i$ with geneotype $x_i$, I simulate data from
+\[
+  \left( \begin{matrix}
+  Y_{I,i}\\
+	Y_{D,i}\\
+	Y_{U,i}
+\end{matrix} \right) \mid \theta, x_{i}, \Sigma \sim N\left( \left( \begin{matrix}
+\mu_I\\
+\theta_s x_{i}\\
+0
+\end{matrix} \right), \Sigma = \left( \begin{matrix}
+\Sigma_{11} & \Sigma_{12}\\
+\Sigma_{21} & \Sigma_{22}
+\end{matrix} \right) \right)
+\]
+where by conditional independence,
+\[
+ \mu_I = \theta x_{i} \Sigma_{12} \Sigma_{22}^{-1}\vec{e}_1.
+\]
+The most important features of this simulation procedure are the minor allele frequency $f_i$ and (standardized) effect size $\theta_i$, as these determine the power to detect effects over the noise in the data.
+
+```{r Specify-parameters}
+N = 20   ##Number of simulated networks
+sim.theta <- FALSE
+theta.try <- c(0.25/sqrt(pi), 0.5/sqrt(pi), 0.75/sqrt(pi), 1/sqrt(pi))   #The variance of the error is 1, so the exptected size of the error is roughly 1/sqrt(pi)
+
+##Parameters fixed throughout simulations##
+
+n.nei <- 9     ##Number of neighbors
+n.ind <- 300   ##Number of indiviuals 
+source.ind <- 3   ##Source gene
+D.gam <- (3:5)
+I.gam <- (1:2)  	 	##Indices of indirectly affected neighbors; correspond to indices of Sigma
+U.gam <- (6:(n.nei+1))		##Indices of unaffected neighbors; correspond to indices of Sigma
+m <- n.nei + 1    ##DOF used in Wishart prior in Bayes Factor analysis
+sigma.a <- c(0.3, 0.5, 0.7)  			#Prior sd's on effect; used in BF calculation
+weights.sigma <- c(1,1,1)					#Relative weights of each element of sigma.a
+
+##Hyperparameters to above distributions##
+
+sigma <- 0.5   ##sigma in the above simulation. Note this is related to the STANDARDIZED effect size, since the diagoanl elements of the true covariance matrix V_j are 1.
+m0 <- 0.2; m1 <- 0.5
+
+###Some Parameters for the Gibbs Sampler###
+n.iter <- 2000
+n.burn <- 1000
+theta.gibbs <- rep(0.5, 3)  #If Dirichlet = T, this is the prior on alpha. Otherwise, this is proportional to the probability of unaffected, indirectly affected, directly affected by the cis-eQTL
+Dirichlet <- TRUE
+```
+
+## Simulate and Analyze Network Expression
+The Gibbs sampler assumes that the SNP - gene0 connection is a direct effect, where gene0 is the source gene. If Dirichlet = T, then $\left( p_D, p_I, p_U\right) \sim \text{Dirichlet}\left( 0.5, 0.5, 0.5\right)$. It computes $P\left( \text{Genes are unaffected by SNP} \mid \text{Data} \right)$ and $E\left[ \left( p_D, p_I, p_U\right) \mid \text{Data} \right]$.
+
+```{r Simulate and Analyze Data}
+results.sim <- list()   #List of results for each j = 1,...,N
+count = 1
+for (j in 1:N) {
+  f.j <- (m1 - m0)*runif(1) + m0
+  
+  X.j <- rbinom(n.ind, size=1, prob=f.j) + rbinom(n.ind, size=1, prob=f.j)   #Genotype under HWE
+  
+  V.j <- generateV(n.nei + 1)
+  Sigma.j <- create.sigma.W(n.ind, n.nei+1, V.j)  
+  
+  if (sim.theta) {
+    theta.j <- sigma*rnorm(1)
+    while (abs(theta.j) < sigma/4) {
+      theta.j <- sigma*rnorm(1)
+    }
+    Y.gex.j <- Sim.gex(Sigma.j, D.gam, I.gam, U.gam, theta.j, X.j, lambda=1)      #n.ind x (n.nei + 1) gene expression matrix in the order of input Sigma.j
+    suff.stat.j <- Suff.stat(Y.gex.j, X.j)   #Sufficient statistics necessary to calculate Bayes Factor
+  
+    gibbs.j <- Gibbs.dir.1(n.iter, n.burn, suff.stat.j, source.ind, n.ind, sigma.a, weights.sigma, m, theta.gibbs, Dirichlet)
+  
+    results.sim[[count]] <- list(post.mean.I=gibbs.j$post.mean.I, post.mean.D=gibbs.j$post.mean.D, maf=f.j, theta=theta.j, post.probs=gibbs.j$post.probs)
+    count = count + 1
+  } else {
+    for (theta.j in theta.try) {
+      Y.gex.j <- Sim.gex(Sigma.j, D.gam, I.gam, U.gam, theta.j, X.j, lambda=1)
+      suff.stat.j <- Suff.stat(Y.gex.j, X.j)
+      gibbs.j <- Gibbs.dir.1(n.iter, n.burn, suff.stat.j, source.ind, n.ind, sigma.a, weights.sigma, m, theta.gibbs, Dirichlet)
+      
+      results.sim[[count]] <- list(post.mean.I=gibbs.j$post.mean.I, post.mean.D=gibbs.j$post.mean.D, maf=f.j, theta=theta.j, post.probs=gibbs.j$post.probs)
+      count = count + 1
+    }
+  }
+}
+```
+
+## Visualize Results
+Get data from simulations into a readable format.
+```{r Process Data}
+if (sim.theta) {
+  results.array <- array(NA, dim=c(N, n.nei+1, 2))   #Simulation index, post.mean.I, post.mean.D
+  for (i in 1:N) {
+    results.array[i,,] <- cbind(results.sim[[i]]$post.mean.I, results.sim[[i]]$post.mean.D)
+  }
+} else {
+  n.theta <- length(theta.try)
+  results.array <- array(NA, dim=c(N, n.theta, n.nei+1, 2))   #Simulation index, theta, post.mean.I, post.mean.D
+  count = 1
+  for (i in 1:N) {
+    for (k in 1:n.theta) {
+      results.array[i,k,,] = cbind(results.sim[[count]]$post.mean.I, results.sim[[count]]$post.mean.D)
+      count <- count + 1
+    }
+  }
+}
+```
+
+Plot histograms and ROC curves of simulation results
+```{r Simulation-histROC}
+n.D <- length(D.gam[-which(D.gam==source.ind)])
+n.I <- length(I.gam)
+n.U <- length(U.gam)
+if (!sim.theta) {
+  for (k in 1:n.theta) {
+    tmp.theta <- as.character(signif(sqrt(pi)*theta.try[k], 2))
+    data.plot.D <- rep(0, n.D*N)
+    data.plot.I <- rep(0, n.I*N)
+    data.plot.U <- rep(0, n.U*N)
+    for (i in 1:N) {
+      data.plot.D[(n.D*(i-1)+1):(n.D*i)] <- apply(results.array[i,k,D.gam[-which(D.gam==source.ind)],] , 1, sum)
+      data.plot.I[(n.I*(i-1)+1):(n.I*i)] <- apply(results.array[i,k,I.gam,], 1, sum)
+      data.plot.U[(n.U*(i-1)+1):(n.U*i)] <- 1 - apply(results.array[i,k,U.gam,], 1, sum)
+    }
+    
+    hist(data.plot.D, prob=T, xlim=c(0,1), xlab='Probability DIRECTLY Affected Simulated Gene is Affected by SNP', ylab='Density', main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"))
+    hist(data.plot.I, prob=T, xlim=c(0,1), xlab='Probability INDIRECTLY Affected Simulated Gene is Affected by SNP', ylab='Density', main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"))
+    hist(data.plot.U, prob=T, xlim=c(0,1), xlab='Probability UNAFFECTED Simulated Gene is Affected by SNP', ylab='Density', main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"))
+    
+    all.data <- c(1-data.plot.D, 1-data.plot.I, 1-data.plot.U); order.data <- order(all.data)
+    gene.label <- c(rep(2, n.D*N), rep(1, n.I*N), rep(0, n.U*N))[order.data]
+    all.data <- sort(all.data)
+    
+    fdr.all <- Cond.FDR(all.data)
+    fdr.labels.all <- FDR.labels(gene.label)
+    sens.all <- Sens.labels(gene.label)
+    plot(fdr.all, sens.all, xlab="Conditional False Discovery Rate From Gibbs Sampler", ylab="Sensitivity = Fraction of Indirect and Directly Affected Genes Captured", main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"), xlim=c(0,1), type="l")
+    plot(fdr.all, fdr.labels.all, xlab="Conditional False Discovery Rate From Gibbs Sampler", ylab="True False Discovery Rate", main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"), type="l")
+    abline(a=0,b=1, col="red")
+    plot(fdr.labels.all, sens.all, xlab="True False Discovery Rate", ylab="Sensitivity = Fraction of Indirect and Directly Affected Genes Captured", main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"), type="l")
+  }
+}
+```
+
+There are a number of conclusions we can draw from these plots. The first is that we have a dificult time performing inference when $\theta$ is small. For $X \sim N\left(0, 1\right)$ and $\frac{\theta}{E|X|} = \frac{1}{4}$, we essentially cannot do inference with the number of samples we have. Further, the results for larger values of $\theta$ are poorly calibrated since we cannot seem to accurately estimate the correct false discovery rate.
+
+## Session information
+
+```{r info}
+sessionInfo()
+```

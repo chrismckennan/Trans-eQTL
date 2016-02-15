@@ -44,6 +44,21 @@ create.sigma <- function(n) {			##Generates a random PD matrix 1/n*X'X, where X 
 	return(1/n * t(X) %*% X)
 }
 
+create.sigma.W <- function(n.ind, n.neigh, V) {      ##Simulate network expression from a Wishart_n.neigh(V, n.ind), where V is symmetric pd
+	R <- chol(V)
+	X.0 <- matrix(rnorm(n.ind*n.neigh), nrow=n.neigh, ncol=n.ind)
+	X <- t(R) %*% X.0
+	return(1/n.ind * X %*% t(X))
+}
+
+generateV <- function(n) {		##Generate a random pd matrix with 1's along the diagonal
+	X <- matrix(rnorm(n^2), n, n)
+	S <- 1/n * t(X) %*% X
+	S <- S / max(diag(S))
+	diag(S) <- rep(1, n)
+	return(S)
+}
+
 #Simulate Expression for a single network, involving a gene g directly affected by cis-eQTL s, and gene g's neighbors whic have been partitioned into Indirectly affected genes (I.gam) and Unaffected genes (U.gam)
 #theta is the cis-eQTL effect size and lambda is a shrinkage term to shrink indirect effects; in real data, indirect effects are generally not exactly as one would expect under statistical independence assumptions
 #D.gam, I.gam, U.gam are the partition of the indices of Sigma into Directly affected, Indirectly affecte and Unaffected genes
@@ -51,6 +66,9 @@ create.sigma <- function(n) {			##Generates a random PD matrix 1/n*X'X, where X 
 Sim.gex <- function(Sigma.in, D.gam, I.gam, U.gam, theta, X.s, lambda=1) {
 	n.ind <- length(X.s)
 	n.nei <- dim(Sigma.in)[1] - 1
+	n.D <- length(D.gam)
+	n.I <- length(I.gam)
+	n.U <- length(U.gam)
 	
 	pos.vec <- c(I.gam, D.gam, U.gam)
 	Sigma <- Sigma.in[pos.vec, pos.vec]			#Sigma = U Sigma.in U' for some permutation matrix U, given by I.gam, D.gam, U.gam
@@ -60,15 +78,15 @@ Sim.gex <- function(Sigma.in, D.gam, I.gam, U.gam, theta, X.s, lambda=1) {
 		perm.matrix[r, pos.vec[r]] = 1
 	}
 	
-	I.gam.tmp <- (1:length(I.gam))
-	D.gam.tmp <- length(I.gam) + 1
-	U.gam.tmp <- ((D.gam.tmp+1):(length(I.gam) + length(U.gam) + 1))
+	I.gam.tmp <- (1:n.I)
+	D.gam.tmp <- ( (n.I + 1) : (n.I + n.D) )
+	U.gam.tmp <- ( (n.I + n.D + 1) : (n.I + n.D + n.U) )
 	
 	Sigma.12 <- Sigma[I.gam.tmp, c(D.gam.tmp, U.gam.tmp)]
 	Sigma.22 <- Sigma[c(D.gam.tmp, U.gam.tmp), c(D.gam.tmp, U.gam.tmp)]
 	
-	tmp.vec <- lambda * Sigma.12 %*% chol2inv(chol(Sigma.22))[,1]
-	mu.vec <- c(tmp.vec, 1, rep(0, length(U.gam)))
+	tmp.vec <- lambda * Sigma.12 %*% cbind( solve(Sigma.22, c(rep(1, n.D), rep(0, n.U))) )
+	mu.vec <- c(tmp.vec, rep(1, n.D), rep(0, n.U))
 	
 	R <- chol(Sigma)			#R'R = Sigma
 	resids.iid <- matrix(rnorm((n.nei + 1)*n.ind), nrow=n.nei+1, ncol=n.ind)
@@ -346,7 +364,7 @@ Log10BF.sing.all <- function(suff.stat, D.index, U.index, n.ind, sigma.a, weight
 		XX1[1, 2:(n.u+2)] = c(SY1[U.index], mu.g)
 		XX1[2:(n.u+2), 1] = c(SY1[U.index], mu.g)
 		XX1[n.u+2, 2:(n.u+2)] = c(SYX[U.index], sxx)
-		XX1[2:(n.u+1), n.u+2] = SYX[U.index]
+		XX1[2:(n.u+2), n.u+2] = c(SYX[U.index], sxx)
 		XX1[2:(n.u+1), 2:(n.u+1)] = SYY[U.index, U.index]
 	
 		XX0 <- XX1[1:(n.u+1), 1:(n.u+1)]	
@@ -389,4 +407,42 @@ Log10BF.sing.all <- function(suff.stat, D.index, U.index, n.ind, sigma.a, weight
 	log10BF <- logBF/log(10)		#Log10 BF
 	
 	return(list(log10BF = log10BF, D.ind = D.index, I.ind = (1:(n.nei+1))[ -c(D.index,U.index) ], U.ind=U.index))
+}
+
+#Compute fdr value for each point
+#input is a list of posterior probabilities
+Cond.FDR <- function(x) {
+	n <- length(x)
+	order.x <- order(x)
+	x.sorted <- x[order.x]
+	q <- rep(0, n); q[1] <- x.sorted[1]
+	for (i in 2:n) {
+		q[i] <- (i-1)*q[i-1]/i + x.sorted[i]/i
+	}
+	return(q[order.x])
+}
+
+#Compute true FDR for labeled data
+#Input is a list of 0's and non-zeros. The 0's are assumed to be negative hits
+FDR.labels <- function(x) {
+	tol <- 1e-6
+	n <- length(x)
+	fdr <- rep(0, n); fdr[1] <- as.numeric(abs(x[1]) < tol)
+	for (i in 2:n) {
+		fdr[i] <- (i-1)*fdr[i-1]/i + as.numeric(abs(x[i]) < tol)/i
+	}
+	return(fdr)
+}
+
+#Compute sensitivity
+#Input is a list of 0's and non-zeros. The 0's are assumed to be negative hits
+Sens.labels <- function(x) {
+	tol <- 1e-6
+	n.true <- sum(as.numeric(abs(x) > tol))
+	n <- length(x)
+	s <- rep(0, n); s[1] <- as.numeric(abs(x[1]) > tol)/n.true
+	for (i in 2:n) {
+		s[i] <- s[i-1] + as.numeric(abs(x[i]) > tol)/n.true
+	}
+	return(s)
 }

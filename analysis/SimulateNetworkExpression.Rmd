@@ -15,17 +15,36 @@ source("chunk-options.R")
 ## Upload Source Functions
 
 ```{r Source R Functions}
+library('gtools')
 source("../R/directionality_CGM.R")
 source("../R/SimulateNetworkExpression.R")
 ```
 
 ## Simulate Network Expression
-I first simulate a covariance matrix $\Sigma \in \mathbb{R}^{n_{\text{neig}} + 1 \times n_{\text{neig}} + 1}$, which is a random covariance matrix 
+The user first specifies the Direct, Indirect and Unaffected neighbors and an effect size $\theta$. I then simulate a covariance matrix $\Sigma \in \mathbb{R}^{n_{\text{neig}} + 1 \times n_{\text{neig}} + 1} \sim \mathcal{W}_{n_{\text{neig}} + 1}\left( I_{n_{\text{neig}} + 1}, n_{\text{neig}} + 1 \right)$. For each independent individual $i$ with genotype $x_i$, I simulate data from
+\[
+  \left( \begin{matrix}
+	Y_{I,i}\\
+	Y_{D,i}\\
+	Y_{U,i}
+\end{matrix} \right) \mid \theta, x_{i}, \Sigma \sim N\left( \left( \begin{matrix}
+\mu_I\\
+\theta_s x_{i}\\
+0
+\end{matrix} \right), \Sigma = \left( \begin{matrix}
+\Sigma_{11} & \Sigma_{12}\\
+\Sigma_{21} & \Sigma_{22}
+\end{matrix} \right) \right)
+\]
+where by conditional independence,
+\[
+ \mu_I = \theta x_{i} \Sigma_{12} \Sigma_{22}^{-1}\vec{e}_1.
+\]
 
 ```{r Define Preliminary Variables}
 n.ind <- 1e3  	#Number of independent individuals
 n.nei <- 9			#Number of neighbors of g
-f.s <- 0.2			#Minor Allele Frequency
+f.s <- 0.3			#Minor Allele Frequency
 Sigma <- create.sigma(n.nei+1)
 lambda <- 1		##Shrinkage term; shrink mean of indirect effects
 D.gam <- (4)
@@ -52,7 +71,7 @@ suff.stat <- Suff.stat(Y.gex, X.s)   #Sufficient statistics necessary to calcula
 ```
 
 ## Analyze Simulated Data
-
+The Gibbs sampler assumes that the SNP - gene0 connection is a direct effect, where gene0 is the source gene. If Dirichlet = T, then $\left( p_D, p_I, p_U\right) \sim \text{Dirichlet}\left( 0.5, 0.5, 0.5\right)$. It computes $P\left( \text{Genes are unaffected by SNP} \mid \text{Data} \right)$ and $E\left[ \left( p_D, p_I, p_U\right) \mid \text{Data} \right]$.
 ```{r Analyze simulated data}
 ####Compute Bayes Factors####
 #Return a 2^n.nei x (n.nei+2) matrix of log10 Bayes factors; the last column are the log10 BF's and the preceding columns give the partitions

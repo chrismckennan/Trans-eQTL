@@ -34,7 +34,7 @@ Directory in which to perform the analysis. Note that this is the whole blood. R
 ```{r Initialize Directories}
 directory.in <- '../data/cis_summary_data/wholeblood/thresh_80'
 directory.out <- '../output/cis_summary_data/wholeblood/thresh_80'
-run_gibbs = FALSE;   #Whether or not to run the Gibbs sampler. If not, I just look for the file in 'directory.out' to get the necessary information 
+run_gibbs = TRUE;   #Whether or not to run the Gibbs sampler. If not, I just look for the file in 'directory.out' to get the necessary information
 ```
 
 ## Create directory structure to house output files
@@ -101,7 +101,7 @@ for (file in all_files) {
 	
   out.file = file.path(directory.out, sub("(summary)", '\\1.gibbs', file, perl=T))
   if (run_gibbs) {
-    gibbs <- Gibbs.dir(n.iter, n.burn, suff.stat, which(Gene.names == gene), n.ind, sigma.a, weights.sigma, n.genes-1)
+    gibbs <- Gibbs.dir.1(n.iter, n.burn, suff.stat, which(Gene.names == gene), n.ind, sigma.a, weights.sigma, n.genes-1)
     PUP.source[count] = gibbs$post.mean[gibbs$D.ind]
   
     gibbs.mat <- rbind(gibbs$post.mean)
