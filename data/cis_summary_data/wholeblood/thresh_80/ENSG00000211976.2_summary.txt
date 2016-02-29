@@ -1,0 +1,12 @@
+Tissue	wholeblood
+N_samples	334
+Chr	14
+Gene	ENSG00000211976.2
+SNP	rs74089869
+Gene_list	ENSG00000211650.2	ENSG00000211976.2
+Gene expression stats (Y^T * Y): 
+324.073016144	265.363673788
+265.363673788	324.073016144
+Genotype stats (X^T * X): 	49.0252136198
+Gene expression - Genotype stats (Y^T * X): 
+-23.9330062375	-28.5424666094

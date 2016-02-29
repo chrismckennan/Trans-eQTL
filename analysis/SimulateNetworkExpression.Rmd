@@ -1,0 +1,92 @@
+---
+title: "Simulate Network Expression"
+author: "Chris McKennan"
+date: 2016-02-10
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+## Upload Source Functions
+
+```{r Source R Functions}
+library('gtools')
+source("../R/directionality_CGM.R")
+source("../R/SimulateNetworkExpression.R")
+```
+
+## Simulate Network Expression
+The user first specifies the Direct, Indirect and Unaffected neighbors and an effect size $\theta$. I then simulate a covariance matrix $\Sigma \in \mathbb{R}^{n_{\text{neig}} + 1 \times n_{\text{neig}} + 1} \sim \mathcal{W}_{n_{\text{neig}} + 1}\left( I_{n_{\text{neig}} + 1}, n_{\text{neig}} + 1 \right)$. For each independent individual $i$ with genotype $x_i$, I simulate data from
+\[
+  \left( \begin{matrix}
+	Y_{I,i}\\
+	Y_{D,i}\\
+	Y_{U,i}
+\end{matrix} \right) \mid \theta, x_{i}, \Sigma \sim N\left( \left( \begin{matrix}
+\mu_I\\
+\theta_s x_{i}\\
+0
+\end{matrix} \right), \Sigma = \left( \begin{matrix}
+\Sigma_{11} & \Sigma_{12}\\
+\Sigma_{21} & \Sigma_{22}
+\end{matrix} \right) \right)
+\]
+where by conditional independence,
+\[
+ \mu_I = \theta x_{i} \Sigma_{12} \Sigma_{22}^{-1}\vec{e}_1.
+\]
+
+```{r Define Preliminary Variables}
+n.ind <- 1e3  	#Number of independent individuals
+n.nei <- 9			#Number of neighbors of g
+f.s <- 0.3			#Minor Allele Frequency
+Sigma <- create.sigma(n.nei+1)
+lambda <- 1		##Shrinkage term; shrink mean of indirect effects
+D.gam <- (4)
+I.gam <- (1:3)			##Indices of indirectly affected neighbors; correspond to indices of Sigma
+U.gam <- (5:(n.nei+1))		##Indices of unaffected neighbors; correspond to indices of Sigma
+theta = 0.6
+X.s <- rbinom(n=n.ind, size=1, prob=f.s) + rbinom(n=n.ind, size=1, prob=f.s)			#Genotype vector of n.ind individuals under HWE
+
+sigma.a <- c(0.2, 0.4, 0.6)				#Prior sd's on effect; used in BF calculation
+weights.sigma <- c(1, 1, 1)					#Relative weights of each element of sigma.a
+m = n.nei + 1					#degrees of freedom used in Wishart Prior; must be at least n.nei + 1
+
+###Some Parameters for the Gibbs Sampler###
+n.iter <- 3000
+n.burn <- 1000
+theta.gibbs <- rep(0.5, 3)  #If Dirichlet = T, this is the prior on alpha. Otherwise, this is proportional to the probability of unaffected, indirectly affected, directly affected by the cis-eQTL
+Dirichlet <- TRUE
+```
+
+Simulated data under above conditions
+```{r Simulate Data}
+Y.gex <- Sim.gex(Sigma, D.gam, I.gam, U.gam, theta, X.s, lambda=lambda)  		#n.ind x (n.nei + 1) gene expression matrix in the order of input Sigma
+suff.stat <- Suff.stat(Y.gex, X.s)   #Sufficient statistics necessary to calculate Bayes Factor
+```
+
+## Analyze Simulated Data
+The Gibbs sampler assumes that the SNP - gene0 connection is a direct effect, where gene0 is the source gene. If Dirichlet = T, then $\left( p_D, p_I, p_U\right) \sim \text{Dirichlet}\left( 0.5, 0.5, 0.5\right)$. It computes $P\left( \text{Genes are unaffected by SNP} \mid \text{Data} \right)$ and $E\left[ \left( p_D, p_I, p_U\right) \mid \text{Data} \right]$.
+```{r Analyze simulated data}
+####Compute Bayes Factors####
+#Return a 2^n.nei x (n.nei+2) matrix of log10 Bayes factors; the last column are the log10 BF's and the preceding columns give the partitions
+#D.gam indicates the position of the direct effect
+
+#BF.obj <- Log10BF(suff.stat, D.gam, n.ind, sigma.a, weights.sigma, m)
+
+####Run Gibbs Sampler on the Simulated Network####
+
+gibbs <- Gibbs.dir.1(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weights.sigma, m, theta.gibbs, Dirichlet)
+
+```
+
+## Session information
+
+```{r info}
+sessionInfo()
+```

@@ -1,0 +1,8 @@
+Tissue	adiposesubcutaneous
+N_samples	295
+Chr	11
+Gene	ENSG00000229859.4
+SNP	rs11230633
+Posterior probability each gene is UNAFFECTED by SNP:
+ENSG00000229859.4	ENSG00000229183.4
+0	0
