@@ -13,7 +13,7 @@ source("chunk-options.R")
 ```
 
 ## Test Model Performance
-The purpose of this file is to test the performance of the Gibbs sampler with the modified Bayes factor, where I condition on the covariance matrix, $\Sigma$. I will simulate $N$ networks (i.e. covariance matrices), each with a corresponding effect size for the 'source' gene (i.e. the gene cis to the SNP), a list of indirect effects and a minor allele frequency. I will also shrink the indirect effects by $\lambda \in (0,1)$ and will use the model where I condition on $\Sigma$ and attempt to learn $\lambda$ from the data. For now, the prior on $\lambda$ in the model is $U(0,1)$.
+The purpose of this file is to test the performance of the Gibbs sampler with the modified Bayes factor, where I condition on the covariance matrix, $\Sigma$. I will simulate $N$ networks (i.e. covariance matrices), each with a corresponding effect size for the 'source' gene (i.e. the gene cis to the SNP), a list of indirect effects and a minor allele frequency. I will also shrink the indirect effects by $\lambda \in (0,1)$ and will use the model where I condition on $\Sigma$. For now, I do not attempt to learn $\lambda$ from the data, as the current method of using a $U(0,1)$ prior on $\lambda$ without updating the prior probabilities of an Indirect and Unaffected gene tend to produce too many false discoveries.
 
 ## Upload Source Functions
 
@@ -24,7 +24,7 @@ source("../R/SimulateNetworkExpression.R")
 ```
 
 ## User specified input parameters for the simulation
-Below are input parameters the user can specify. For each simulation $j = 1,\ldots, N$, I simulate an effect size $\theta_j \sim N\left( 0, \sigma^2 \right)1\left\lbrace |\theta_j| > \frac{\sigma}{4} \right\rbrace$, a minor allele frequency $f_i \sim U[m_0, m_1]$ and a covariance matrix $\Sigma_j \in \mathbb{R}^{n_{\text{neigh}} + 1 \times n_{\text{neigh}} + 1} \sim \mathcal{W}_{n_{\text{neigh}} + 1}\left( V_j, n_{\text{ind}} \right)$. $V_j$ had 1's along the diagonal and $\rho \in (0,1)$ everywhere else. Note as $\rho$ gets larger, the indirect effects become more pronounced. In these simulations, I set $\rho = 0.4, 0.6$ and 0.8.
+Below are input parameters the user can specify. For each simulation $j = 1,\ldots, N$, I simulate an effect size $\theta_j \sim N\left( 0, \sigma^2 \right)1\left\lbrace |\theta_j| > \frac{\sigma}{4} \right\rbrace$, a minor allele frequency $f_i \sim U[m_0, m_1]$ and a covariance matrix $\Sigma_j \in \mathbb{R}^{n_{\text{neigh}} + 1 \times n_{\text{neigh}} + 1} \sim \mathcal{W}_{n_{\text{neigh}} + 1}\left( V_j, n_{\text{ind}} \right)$. $V_j$ had 1's along the diagonal and $\rho \in (0,1)$ everywhere else. Note as $\rho$ gets larger, the indirect effects become more pronounced. In these simulations, I set $\rho = 0.4$ and 0.8.
 
 For each independent individual $i$ with geneotype $x_i$, I simulate data from
 \[
@@ -33,7 +33,7 @@ For each independent individual $i$ with geneotype $x_i$, I simulate data from
 	Y_{D,i}\\
 	Y_{U,i}
 \end{matrix} \right) \mid \theta, x_{i}, \Sigma \sim N\left( \left( \begin{matrix}
-\mu_I\\
+\lambda\mu_I\\
 \theta_s x_{i}\\
 0
 \end{matrix} \right), \Sigma = \left( \begin{matrix}
@@ -43,9 +43,23 @@ For each independent individual $i$ with geneotype $x_i$, I simulate data from
 \]
 where by conditional independence,
 \[
- \mu_I = \theta x_{i} \Sigma_{12} \Sigma_{22}^{-1}\vec{e}_1.
+ \mu_I = \theta x_{i} \Sigma_{12} \Sigma_{22}^{-1}\left[  \begin{matrix}
+ 1\\
+ \vdots\\
+ 1\\
+ 0\\
+ \vdots\\
+ 0
+ \end{matrix}\right] \quad \text{where } \left[  \begin{matrix}
+ 1\\
+ \vdots\\
+ 1\\
+ 0\\
+ \vdots\\
+ 0
+ \end{matrix}\right]^T 1 = |D|.
 \]
-The most important features of this simulation procedure are the minor allele frequency $f_i$ and (standardized) effect size $\theta_i$, as these determine the power to detect effects over the noise in the data.
+The most important features of this simulation procedure are the minor allele frequency $f_i$, the (standardized) effect size $\theta_i$ and the correlation $\rho$ as these determine the power to detect effects over the noise in the data.
 
 ```{r Specify-parameters}
 N = 20   ##Number of simulated networks
@@ -111,7 +125,7 @@ for (rho in rho.vec) {
 	    count = count + 1
 	  } else {
 	    for (theta.j in theta.try) {
-	      Y.gex.j <- Sim.gex(Sigma.j, D.gam, I.gam, U.gam, theta.j, X.j, lambda=1)
+	      Y.gex.j <- Sim.gex(Sigma.j, D.gam, I.gam, U.gam, theta.j, X.j, lambda=lambda)
 	      suff.stat.j <- Suff.stat(Y.gex.j, X.j)
 	      gibbs.j <- Gibbs.dir.cgm(n.iter, n.burn, suff.stat.j, source.ind, n.ind, sigma.a, weights.sigma, theta=theta.gibbs, dirichlet=Dirichlet, update.lambda=F)
 	      
