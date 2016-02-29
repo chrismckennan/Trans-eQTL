@@ -6,11 +6,16 @@ title: "Home"
 
 **Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
 
-## Tutorials
+## Analyzed Simulated Data
+Note that the below analyses are done with CONDITIONING on the covariance matrix $\Sigma$. The reason for this is that we can include a shrinkage term for indirect effects and still have Bayes Factor be analytic with summary data.
 
-*  [Making a project site](tutorial.html) ([2015-12-12 lab meeting slides](../docs/repo-setup-tutorial-stephens-lab-2015-12-03.pdf))
+*  [Simulated data WITHOUT shrinking indirect effects](SimulateNetworkExpression_LargeScale_cgmMultipleRHO.html)
+*  [Simulated data WITH shrinking indirect effects](SimulateNetworkExpression_LargeScale_cgmMultipleRHO_lambda.html)
 
 
-## Using Rmardown to document anaysis: An example
+## Analyzed Real Data
+For now, these data were analyzed unconditional on $\Sigma$, using an improper Wishart prior for $\Sigma$.
 
-*  [Use PCA to visualize some single-cell data](single-cell-pca.html)
+*  [Adipose Tissue, 0.80 correlation cutoff](AnalyzeSummaryData_Adipose80.html)
+*  [Muscle Skeletal, 0.80 correlation cutoff](AnalyzeSummaryData_muscleskeletal80.html)
+*  [Whole Blood, 0.80 correlation cutoff](AnalyzeSummaryData_wholeblood80.html)
