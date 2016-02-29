@@ -70,18 +70,23 @@ img {
 </div>
 
 
-<p><strong>Last updated:</strong> 2015-12-21</p>
-<p><strong>Code version:</strong> efe92b62a12ac0daa048d7fe1507c8d7ef46efa0</p>
-<div id="tutorials" class="section level2">
-<h2>Tutorials</h2>
+<p><strong>Last updated:</strong> 2016-02-29</p>
+<p><strong>Code version:</strong> 03c335dd4b56e067f78367fdb33062851c03fe37</p>
+<div id="analyzed-simulated-data" class="section level2">
+<h2>Analyzed Simulated Data</h2>
+<p>Note that the below analyses are done with CONDITIONING on the covariance matrix <span class="math inline">\(\Sigma\)</span>. The reason for this is that we can include a shrinkage term for indirect effects and still have Bayes Factor be analytic with summary data.</p>
 <ul>
-<li><a href="tutorial.html">Making a project site</a> (<a href="../docs/repo-setup-tutorial-stephens-lab-2015-12-03.pdf">2015-12-12 lab meeting slides</a>)</li>
+<li><a href="SimulateNetworkExpression_LargeScale_cgmMultipleRHO.html">Simulated data WITHOUT shrinking indirect effects</a></li>
+<li><a href="SimulateNetworkExpression_LargeScale_cgmMultipleRHO_lambda.html">Simulated data WITH shrinking indirect effects</a></li>
 </ul>
 </div>
-<div id="using-rmardown-to-document-anaysis-an-example" class="section level2">
-<h2>Using Rmardown to document anaysis: An example</h2>
+<div id="analyzed-real-data" class="section level2">
+<h2>Analyzed Real Data</h2>
+<p>For now, these data were analyzed unconditional on <span class="math inline">\(\Sigma\)</span>, using an improper Wishart prior for <span class="math inline">\(\Sigma\)</span>.</p>
 <ul>
-<li><a href="single-cell-pca.html">Use PCA to visualize some single-cell data</a></li>
+<li><a href="AnalyzeSummaryData_Adipose80.html">Adipose Tissue, 0.80 correlation cutoff</a></li>
+<li><a href="AnalyzeSummaryData_muscleskeletal80.html">Muscle Skeletal, 0.80 correlation cutoff</a></li>
+<li><a href="AnalyzeSummaryData_wholeblood80.html">Whole Blood, 0.80 correlation cutoff</a></li>
 </ul>
 </div>
 
