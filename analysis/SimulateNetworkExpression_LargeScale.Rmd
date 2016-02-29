@@ -24,16 +24,8 @@ source("../R/SimulateNetworkExpression.R")
 ```
 
 ## User specified input parameters for the simulation
-Below are input parameters the user can specify. For each simulation $j = 1,\ldots, N$, I simulate an effect size $\theta_j \sim N\left( 0, \sigma^2 \right)1\left\lbrace |\theta_j| > \frac{\sigma}{4} \right\rbrace$, a minor allele frequency $f_i \sim U[m_0, m_1]$ and a covariance matrix $\Sigma_j \in \mathbb{R}^{n_{\text{neigh}} + 1 \times n_{\text{neigh}} + 1} \sim \mathcal{W}_{n_{\text{neigh}} + 1}\left( V_j, n_{\text{ind}} \right)$, where $V_j$ is a random covariance matrix with 1's along the diagonal (i.e. we assume that the variability in expression is the same for different genes within the same network). Specifically, 
-\[
-V^{(0)}_j = Z^T Z \text{ for } Z \sim N(0, I_{n_{\text{neigh}} + 1})
-\]
-\[
-V^{(1)}_j = \frac{1}{\max \text{diag}\left( V^{(0)}_j \right)} V^{(0)}_j
-\]
-\[
-V_j = V^{(1)}_j + I_{n_{\text{neigh}+1}} - \text{diag}\left( V^{(1)}_j \right).
-\]
+Below are input parameters the user can specify. For each simulation $j = 1,\ldots, N$, I simulate an effect size $\theta_j \sim N\left( 0, \sigma^2 \right)1\left\lbrace |\theta_j| > \frac{\sigma}{4} \right\rbrace$, a minor allele frequency $f_i \sim U[m_0, m_1]$ and a covariance matrix $\Sigma_j \in \mathbb{R}^{n_{\text{neigh}} + 1 \times n_{\text{neigh}} + 1} \sim \mathcal{W}_{n_{\text{neigh}} + 1}\left( V_j, n_{\text{ind}} \right)$. $V_j$ had 1's along the diagonal and $\rho = 0.8$ everywhere else. Note as $\rho$ gets larger, the indirect effects become more pronounced.
+
 For each independent individual $i$ with geneotype $x_i$, I simulate data from
 \[
   \left( \begin{matrix}
@@ -65,12 +57,13 @@ theta.try <- c(0.25/sqrt(pi), 0.5/sqrt(pi), 0.75/sqrt(pi), 1/sqrt(pi))   #The va
 n.nei <- 9     ##Number of neighbors
 n.ind <- 300   ##Number of indiviuals 
 source.ind <- 3   ##Source gene
-D.gam <- (3:5)
+D.gam <- (3:4)
 I.gam <- (1:2)  	 	##Indices of indirectly affected neighbors; correspond to indices of Sigma
-U.gam <- (6:(n.nei+1))		##Indices of unaffected neighbors; correspond to indices of Sigma
+U.gam <- (5:(n.nei+1))		##Indices of unaffected neighbors; correspond to indices of Sigma
 m <- n.nei + 1    ##DOF used in Wishart prior in Bayes Factor analysis
 sigma.a <- c(0.3, 0.5, 0.7)  			#Prior sd's on effect; used in BF calculation
 weights.sigma <- c(1,1,1)					#Relative weights of each element of sigma.a
+rho <- 0.8
 
 ##Hyperparameters to above distributions##
 
@@ -95,8 +88,9 @@ for (j in 1:N) {
   
   X.j <- rbinom(n.ind, size=1, prob=f.j) + rbinom(n.ind, size=1, prob=f.j)   #Genotype under HWE
   
-  V.j <- generateV(n.nei + 1)
-  Sigma.j <- create.sigma.W(n.ind, n.nei+1, V.j)  
+  #V.j <- generateV(n.nei + 1)
+  #Sigma.j <- create.sigma.W(n.ind, n.nei+1, V.j) 
+  Sigma.j <- (1-rho) * diag(n.nei+1) + rho * cbind(rep(1,n.nei+1)) %*% rbind(rep(1,n.nei+1))
   
   if (sim.theta) {
     theta.j <- sigma*rnorm(1)
@@ -128,16 +122,19 @@ Get data from simulations into a readable format.
 ```{r Process Data}
 if (sim.theta) {
   results.array <- array(NA, dim=c(N, n.nei+1, 2))   #Simulation index, post.mean.I, post.mean.D
+  post.probs.array <- array(NA, dim=c(length(theta.try)*N), 3)
   for (i in 1:N) {
     results.array[i,,] <- cbind(results.sim[[i]]$post.mean.I, results.sim[[i]]$post.mean.D)
   }
 } else {
   n.theta <- length(theta.try)
   results.array <- array(NA, dim=c(N, n.theta, n.nei+1, 2))   #Simulation index, theta, post.mean.I, post.mean.D
+  post.probs.array <- array(NA, dim=c(N, n.theta, 3))
   count = 1
   for (i in 1:N) {
     for (k in 1:n.theta) {
       results.array[i,k,,] = cbind(results.sim[[count]]$post.mean.I, results.sim[[count]]$post.mean.D)
+      post.probs.array[i,k,] <- results.sim[[count]]$post.probs   #U, I, D
       count <- count + 1
     }
   }
@@ -156,16 +153,24 @@ if (!sim.theta) {
     data.plot.I <- rep(0, n.I*N)
     data.plot.U <- rep(0, n.U*N)
     for (i in 1:N) {
-      data.plot.D[(n.D*(i-1)+1):(n.D*i)] <- apply(results.array[i,k,D.gam[-which(D.gam==source.ind)],] , 1, sum)
-      data.plot.I[(n.I*(i-1)+1):(n.I*i)] <- apply(results.array[i,k,I.gam,], 1, sum)
-      data.plot.U[(n.U*(i-1)+1):(n.U*i)] <- 1 - apply(results.array[i,k,U.gam,], 1, sum)
+      if (n.D == 1) {
+        data.plot.D[(n.D*(i-1)+1):(n.D*i)] <- sum(results.array[i,k,D.gam[-which(D.gam==source.ind)],])
+      } else {
+        data.plot.D[(n.D*(i-1)+1):(n.D*i)] <- apply(results.array[i,k,D.gam[-which(D.gam==source.ind)],] , 1, sum)
+      }
+      if (n.I == 1) {
+        data.plot.I[(n.I*(i-1)+1):(n.I*i)] <- sum(results.array[i,k,I.gam,])      #Posterior probability directly affected genes are AFFECTED by SNP
+      } else {
+        data.plot.I[(n.I*(i-1)+1):(n.I*i)] <- apply(results.array[i,k,I.gam,], 1, sum)   #Posterior probability indirectly affected genes are AFFECTED by SNP
+      }
+      data.plot.U[(n.U*(i-1)+1):(n.U*i)] <- 1 - apply(results.array[i,k,U.gam,], 1, sum)   #posterior probability unaffected genes are UNAFFECTED by SNP
     }
     
     hist(data.plot.D, prob=T, xlim=c(0,1), xlab='Probability DIRECTLY Affected Simulated Gene is Affected by SNP', ylab='Density', main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"))
     hist(data.plot.I, prob=T, xlim=c(0,1), xlab='Probability INDIRECTLY Affected Simulated Gene is Affected by SNP', ylab='Density', main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"))
-    hist(data.plot.U, prob=T, xlim=c(0,1), xlab='Probability UNAFFECTED Simulated Gene is Affected by SNP', ylab='Density', main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"))
+    hist(1-data.plot.U, prob=T, xlim=c(0,1), xlab='Probability UNAFFECTED Simulated Gene is Affected by SNP', ylab='Density', main=paste0("eQTL Effect Size = ", tmp.theta, "x Expected Residual Size"))
     
-    all.data <- c(1-data.plot.D, 1-data.plot.I, 1-data.plot.U); order.data <- order(all.data)
+    all.data <- c(1-data.plot.D, 1-data.plot.I, data.plot.U); order.data <- order(all.data)   #Posterior probabilities genes are UNAFFECTED by SNP
     gene.label <- c(rep(2, n.D*N), rep(1, n.I*N), rep(0, n.U*N))[order.data]
     all.data <- sort(all.data)
     

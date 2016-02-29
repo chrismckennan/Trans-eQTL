@@ -109,7 +109,10 @@ Suff.stat <- function(Y.gex, X.s) {
 	SY1 <- apply(Y.gex, 2, mean)		#a (n.nei + 1) vector
 	mu.g <- mean(X.s)			#a scalar
 	
-	return(list(SYY = SYY, sxx = sxx, SYX = SYX, SY1 = SY1, mu.g = mu.g))
+	stand.Y <- scale(Y.gex, center=T, scale=F)
+	Sigma <- 1/n.ind * t(stand.Y) %*% stand.Y
+	
+	return(list(SYY = SYY, sxx = sxx, SYX = SYX, SY1 = SY1, mu.g = mu.g, Sigma = Sigma))
 }
 
 

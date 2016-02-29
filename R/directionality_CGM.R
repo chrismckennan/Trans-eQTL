@@ -77,6 +77,10 @@ Gibbs.dir.1 <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weight
 	post.mean.D <- rep(0, n.nei+1); post.mean.D[D.gam] <- NA
 	
 	post.prob.nodes <- rep(0, 3)			#P( (p_U, p_I, p_D) | Data)
+	if (! dirichlet) {
+		theta <- theta/sum(theta)
+		post.prob.nodes <- theta
+	}
 	
 	for (i in 1:n.iter) {
 		
@@ -117,7 +121,7 @@ Gibbs.dir.1 <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weight
 			    post.mean.D[j] <- post.mean.D[j] + as.numeric(v.gibbs == 2)/(n.iter - n.burn)
 			}		
 		}
-		if (i > n.burn) {
+		if (i > n.burn && dirichlet) {
 			gibbs.probs <- rdirichlet(1, theta + c(length(which(ind.infer == 0)), length(which(ind.infer == 1)), length(which(ind.infer == 2)) - 1) )			#Gibbs sampler for (p_U, p_I, p_D)
 			post.prob.nodes <- post.prob.nodes + gibbs.probs/(n.iter - n.burn)		
 		}
