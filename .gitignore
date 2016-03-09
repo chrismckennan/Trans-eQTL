@@ -3,7 +3,7 @@ paper/*.aux
 paper/*.log
 packrat/lib*/
 *.png
-.Rhistory
-.Rproj.user
+.Rhistory*
+.Rproj.user*
 packrat/src/
 test/*
