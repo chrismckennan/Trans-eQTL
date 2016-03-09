@@ -25,6 +25,7 @@ Source Gibbs Sampler and Bayes Factor functions.
 ```{r Grab R functions}
 source("../R/SimulateNetworkExpression.R")  #Compute Bayes factors
 source("../R/directionality_CGM.R")    #Gibbs Sampler
+source("../R/Model2.R")    #Model 2 code (lambda that shrinks indirect effects)
 library('gtools')
 ```
 
@@ -33,8 +34,8 @@ library('gtools')
 Directory in which to perform the analysis. Note that this is the whole blood. Results are saved in output, with the same directory structure as the summary data were stored in data
 
 ```{r Initialize Directories}
-directory.in <- '../data/cis_summary_data/wholeblood/thresh_80'
-directory.out <- '../output/cis_summary_data/wholeblood/thresh_80'
+directory.in <- '../data/cis_summary_data/wholeblood/thresh_60'
+directory.out <- '../output/cis_summary_data/wholeblood/thresh_60'
 run_gibbs = TRUE;   #Whether or not to run the Gibbs sampler. If not, I just look for the file in 'directory.out' to get the necessary information
 ```
 
