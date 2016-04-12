@@ -7,3 +7,4 @@ packrat/lib*/
 .Rproj.user*
 packrat/src/
 test/*
+.Rproj.user
