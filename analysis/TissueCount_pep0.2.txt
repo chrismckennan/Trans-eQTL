@@ -1,7 +1,0 @@
-adiposesubcutaneous	281
-muscleskeletal	217
-wholeblood	493
-adiposesubcutaneous_muscleskeletal	30
-adiposesubcutaneous_wholeblood	14
-muscleskeletal_wholeblood	29
-All3	13

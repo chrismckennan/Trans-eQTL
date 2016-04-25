@@ -11,6 +11,8 @@ Note that the below analyses are done with CONDITIONING on the covariance matrix
 
 *  [Simulated data WITHOUT shrinking indirect effects](SimulateNetworkExpression_LargeScale_cgmMultipleRHO.html)
 *  [Simulated data WITH shrinking indirect effects](SimulateNetworkExpression_LargeScale_cgmMultipleRHO_lambda.html)
+*  [Real Simulated data WITHOUT shrinking indirect effects](SimulateNetworkExpression_RealData_lambda1.html)
+*  [Real Simulated data WITH shrinking indirect effects](SimulateNetworkExpression_RealData_lambda0p8.html)
 
 
 ## Analyzed Real Data
@@ -19,9 +21,3 @@ For now, these data were analyzed unconditional on $\Sigma$, using an improper W
 *  [Adipose Tissue, 0.80 correlation cutoff](AnalyzeSummaryData_Adipose80.html)
 *  [Muscle Skeletal, 0.80 correlation cutoff](AnalyzeSummaryData_muscleskeletal80.html)
 *  [Whole Blood, 0.80 correlation cutoff](AnalyzeSummaryData_wholeblood80.html)
-
-## Validation and Summary of Results
-Here we try to validate some of our results from real data with known trans networks
-
-*  [Verify Results and eQTL Sharing](PreliminaryResults_VerifyANDCompare.html)
-

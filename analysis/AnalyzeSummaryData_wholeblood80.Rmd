@@ -25,7 +25,6 @@ Source Gibbs Sampler and Bayes Factor functions.
 ```{r Grab R functions}
 source("../R/SimulateNetworkExpression.R")  #Compute Bayes factors
 source("../R/directionality_CGM.R")    #Gibbs Sampler
-library('gtools')
 ```
 
 ## The directories to grab and store output files
@@ -74,7 +73,6 @@ for (file in all_files) {
 	Gene.names <- strsplit(all_data[6], split='\t', perl=T)[[1]][2:length(strsplit(all_data[6], split='\t', perl=T)[[1]])]   #Column names for Y'Y
 	n.genes <- length(Gene.names)    #Number of genes in the network
   N.genes[count] = n.genes
-  source.ind <- which(Gene.names == gene)
 	
 	YtY <- array(NA, dim=c(n.genes, n.genes))   #Y'Y
 	for (r in 1:n.genes) {

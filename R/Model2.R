@@ -148,7 +148,7 @@ Gibbs.dir.cgm <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weig
 		if (update.lambda) {
 			lambda.new <- runif(1,0,1)
 			log10bf.new <- BF.cgm(suff.stat, which(ind.infer == 1), which(ind.infer == 2), which(ind.infer == 0), n.ind, sigma.a, weights.sigma, lambda.new)
-			if (log10bf.new - log10bf.use > log(runif(1), base=10)) {
+			if (log10bf.new * dbeta(lambda.new, 10, 1, log=T)/log(10) - log10bf.use * dbeta(lambda.old, 10, 1, log=T)/log(10) > log(runif(1), base=10)) {
 				lambda.old <- lambda.new
 			}
 		}

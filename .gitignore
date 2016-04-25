@@ -3,8 +3,15 @@ paper/*.aux
 paper/*.log
 packrat/lib*/
 *.png
+<<<<<<< HEAD
 .Rhistory*
 .Rproj.user*
 packrat/src/
 test/*
 .Rproj.user
+=======
+.Rhistory
+.Rproj.user
+packrat/src/
+test/*
+>>>>>>> master
