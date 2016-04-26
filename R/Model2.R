@@ -148,7 +148,7 @@ Gibbs.dir.cgm <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weig
 		if (update.lambda) {
 			lambda.new <- runif(1,0,1)
 			log10bf.new <- BF.cgm(suff.stat, which(ind.infer == 1), which(ind.infer == 2), which(ind.infer == 0), n.ind, sigma.a, weights.sigma, lambda.new)
-			if (log10bf.new * dbeta(lambda.new, 10, 1, log=T)/log(10) - log10bf.use * dbeta(lambda.old, 10, 1, log=T)/log(10) > log(runif(1), base=10)) {
+			if (log10bf.new - log10bf.use > log(runif(1), base=10)) {
 				lambda.old <- lambda.new
 			}
 		}
@@ -161,6 +161,98 @@ Gibbs.dir.cgm <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weig
 			lambda.vec[i - n.burn] = lambda.old
 		}
 	}
+	if (update.lambda) {
+		return(list(post.mean.U=post.mean, post.mean.I=post.mean.I, post.mean.D=post.mean.D, D.ind=D.gam, post.probs=post.prob.nodes, mean.lambda=lambda.vec))
+	} else {
+		return(list(post.mean.U=post.mean, post.mean.I=post.mean.I, post.mean.D=post.mean.D, D.ind=D.gam, post.probs=post.prob.nodes))
+	}
 	
-	return(list(post.mean.U=post.mean, post.mean.I=post.mean.I, post.mean.D=post.mean.D, D.ind=D.gam, post.probs=post.prob.nodes, mean.lambda=lambda.vec))
+}
+
+
+##The only difference between this function and the above function is that Gibbs.dir.cgm.fixedLambda assumes a fixed value of lambda.
+
+Gibbs.dir.cgm.fixedLambda <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weights.sigma, theta=rep(0.5, 3), dirichlet=T, lambda=1) {			#P(Node Label) ~ Dirichlet(theta[1], theta[2], theta[3])
+	n.nei <- dim(suff.stat$SYY)[1] - 1
+	lambda.old <- lambda
+	lambda.vec <- rep(0, n.iter - n.burn)
+	
+	ind.infer <- rep(0, (n.nei+1))			##0 is unaffected, 1 is indirectly affected, 2 is directly affected
+	ind.infer[D.gam] <- 2
+	
+	iterate.index <- (1:(n.nei+1))[-D.gam]
+	
+	post.mean <- rep(0, n.nei+1); post.mean[D.gam] <- NA				#Posterior mean that index is unaffected by cis-eQTL
+	post.mean.I <- rep(0, n.nei+1); post.mean.I[D.gam] <- NA
+	post.mean.D <- rep(0, n.nei+1); post.mean.D[D.gam] <- NA
+	
+	post.prob.nodes <- rep(0, 3)			#P( (p_U, p_I, p_D) | Data)
+	if (! dirichlet) {
+		theta <- theta/sum(theta)
+		post.prob.nodes <- theta
+	}
+	
+	for (i in 1:n.iter) {
+		
+		for (j in iterate.index) {
+			tmp.0 <- ind.infer
+			tmp.0[j] <- 0					##Make jth index 0, i.e. unaffected
+			
+			tmp.1 <- ind.infer
+			tmp.1[j] <- 1					##Make jth index 1, i.e. indirectly affected
+			
+			tmp.2 <- ind.infer
+			tmp.2[j] <- 2					##Make jth index 2, i.e. directly affected
+			
+			log10bfU <- BF.cgm(suff.stat, which(tmp.0 == 1), which(tmp.0 == 2), which(tmp.0 == 0), n.ind, sigma.a, weights.sigma, lambda.old)
+			log10bfI <- BF.cgm(suff.stat, which(tmp.1 == 1), which(tmp.1 == 2), which(tmp.1 == 0), n.ind, sigma.a, weights.sigma, lambda.old)
+			log10bfD <- BF.cgm(suff.stat, which(tmp.2 == 1), which(tmp.2 == 2), which(tmp.2 == 0), n.ind, sigma.a, weights.sigma, lambda.old)
+			
+			if (dirichlet) {
+				pU.j <- ( theta[1] + length(which(ind.infer[-j] == 0)) )/(sum(theta) + n.nei - 1)			#If we use a Dirichlet prior, find p(Node j is Unaffected | Rest of Node Assignments)
+				pI.j <- ( theta[2] + length(which(ind.infer[-j] == 1)) )/(sum(theta) + n.nei - 1)
+				pD.j <- 1 - pU.j - pI.j
+			} else {
+				pU.j <- theta[1]
+				pI.j <- theta[2]
+				pD.j <- theta[3]
+			}
+			
+			C.j <- max(log10bfU, log10bfI, log10bfD)
+			post.probU.j <- pU.j*10^( log10bfU - C.j )/( pU.j*10^( log10bfU - C.j ) + pI.j*10^( log10bfI - C.j ) + pD.j*10^( log10bfD - C.j ) )
+			if (abs(post.probU.j) < 1e-8) {
+				post.probU.j = 0
+			}
+			post.probI.j <- pI.j*10^( log10bfI - C.j )/( pU.j*10^( log10bfU - C.j ) + pI.j*10^( log10bfI - C.j ) + pD.j*10^( log10bfD - C.j ) )
+			if (abs(post.probI.j) < 1e-8) {
+				post.probI.j = 0
+			}			
+			post.probD.j <- 1 - post.probU.j - post.probI.j
+			if (abs(post.probD.j) < 1e-8) {
+				post.probD.j = 0
+			}	
+			
+			gibbs.sample <- rmultinom( 1, 1, c(post.probU.j, post.probI.j, post.probD.j) )
+			v.gibbs <- which( gibbs.sample == 1 ) - 1			#Gibbs sampler
+			log10bf.use <- c(log10bfU, log10bfI, log10bfD)[v.gibbs + 1]
+			
+			ind.infer[j] <- v.gibbs	
+			if (i > n.burn) {
+				post.mean[j] <- post.mean[j] + as.numeric(! v.gibbs)/(n.iter - n.burn)
+			    post.mean.I[j] <- post.mean.I[j] + as.numeric(v.gibbs == 1)/(n.iter - n.burn)
+			    post.mean.D[j] <- post.mean.D[j] + as.numeric(v.gibbs == 2)/(n.iter - n.burn)
+			}		
+		}
+		
+		if (i > n.burn) {
+			if (dirichlet) {
+				gibbs.probs <- rdirichlet(1, theta + c(length(which(ind.infer == 0)), length(which(ind.infer == 1)), length(which(ind.infer == 2)) - 1) )            #Gibbs sampler for (p_U, p_I, p_D)
+				post.prob.nodes <- post.prob.nodes + gibbs.probs/(n.iter - n.burn)	
+			}			
+			lambda.vec[i - n.burn] = lambda.old
+		}
+	}
+
+	return(list(post.mean.U=post.mean, post.mean.I=post.mean.I, post.mean.D=post.mean.D, D.ind=D.gam, post.probs=post.prob.nodes))
+	
 }

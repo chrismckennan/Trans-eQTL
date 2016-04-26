@@ -11,7 +11,7 @@
 Gibbs.dir.0 <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weights.sigma, m, theta=rep(0.5, 3), dirichlet=T) {			#P(Node Label) ~ Dirichlet(theta[1], theta[2], theta[3])
 	n.nei <- dim(suff.stat$SYY)[1] - 1
 	
-	ind.infer <- rep(0, (n.nei+1))			##0 is unaffected, 1 is indirectly affected, 2 is directly affected
+	ind.infer <- rbinom((n.nei+1), 1, 1/2)			##0 is unaffected, 1 is indirectly affected, 2 is directly affected
 	ind.infer[D.gam] <- 2
 	
 	#iterate.index <- (1:(n.nei+1))[-D.gam]

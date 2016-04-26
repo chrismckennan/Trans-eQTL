@@ -7,7 +7,7 @@
 #n.nei <- 9			#Number of neighbors of g
 #f.s <- 0.1			#Minor Allele Frequency
 #Sigma <- create.sigma(n.nei+1)
-#lambda <- 1		##Shrinkage term; shrink mean of indirect effects
+#lambda <- 0.8		##Shrinkage term; shrink mean of indirect effects
 #D.gam <- (4)
 #I.gam <- (1:3)			##Indices of indirectly affected neighbors; correspond to indices of Sigma
 #U.gam <- (5:(n.nei+1))		##Indices of unaffected neighbors; correspond to indices of Sigma

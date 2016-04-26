@@ -12,7 +12,9 @@ Note that the below analyses are done with CONDITIONING on the covariance matrix
 *  [Simulated data WITHOUT shrinking indirect effects](SimulateNetworkExpression_LargeScale_cgmMultipleRHO.html)
 *  [Simulated data WITH shrinking indirect effects](SimulateNetworkExpression_LargeScale_cgmMultipleRHO_lambda.html)
 *  [Real Simulated data WITHOUT shrinking indirect effects](SimulateNetworkExpression_RealData_lambda1.html)
-*  [Real Simulated data WITH shrinking indirect effects](SimulateNetworkExpression_RealData_lambda0p8.html)
+*  [Real Simulated data WITH shrinking indirect effects 1](SimulateNetworkExpression_RealData_lambda0p9.html)
+*  [Real Simulated data WITH shrinking indirect effects 2](SimulateNetworkExpression_RealData_lambda0p8.html)
+*  [Check Shrinkage With Oracle Plugin](SimulateNetworkExpression_RealData_Oraclelambda0p8.html)
 
 
 ## Analyzed Real Data

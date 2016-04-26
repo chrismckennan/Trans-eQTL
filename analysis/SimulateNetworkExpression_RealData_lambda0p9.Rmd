@@ -1,0 +1,199 @@
+---
+title: "Simulate Network Expression on a Large Scale"
+author: "Chris McKennan"
+date: 2016-02-10
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+## Test Model Performance with Real Data
+The purpose of this file is to test the performance of the Gibbs sampler with real data. Presumably gene epxression data for site $g$ is $G_g \approx \theta_{cis} X_g + \epsilon_g$, meaning the mean standardized expression will approximately be $G_g - \bar{G}_g \approx \theta_{cis} \left(X_g - \bar{X}_g\right) + \epsilon_g$. If $\theta_{cis}$ is small then I should be able to simulate my own effects without much influence from the genotype. I will simulate data using one of the raw expression files Brian sent by:
+1.) Center the true gene epxression matrix $G \in \mathbb{R}^{n_{\text{ind}} \times n_{\text{genes}}}$
+2.) Chose an anchor gene $g$ and chose the $t$ most correlated genes using $\Sigma_g = \frac{1}{n_{\text{ind}} G^T G$ as a metric.
+3.) Simulate genotypes $X \in \mathbb{R}^{n_{\text{ind}} \times 1}$ for the anchor gene $g$.
+4.) Fix the cis-eQTL effect $\theta_g > 0$ and partition the $t$ nodes into D, I, U nodes.
+5.) Simulate $Y \in \mathbb{R}^{(t+1) \times 1}$ using $\Sigma_g$ as the correlation matrix.
+
+For these simulations, I will shrink the indirect effects by a constant $\lambda = 0.9$.
+
+## Upload Source Functions
+
+```{r Source R Functions}
+library('gtools')
+source("../R/directionality_CGM.R")
+source("../R/SimulateNetworkExpression.R")
+source("../R/Model2.R")
+```
+
+##Load Data
+
+```{r LoadData}
+path.data <- "../data/raw_expression/skinsunexposedlowerleg_hcp_corrected_factors_genes_certain_biotypes_TPM.txt"
+G.raw <- data.frame(read.table(path.data, sep="\t", dec=".", header=T, check.names=T))
+n.ind <- ncol(G.raw) - 1    #Number of individuals
+p <- nrow(G.raw)        #Number of genes
+G.centered <- as.matrix(G.raw[,2:(n.ind+1)]) - cbind( apply(as.matrix(G.raw[,2:(n.ind+1)]), 1, mean) ) %*% rbind( rep(1, n.ind) )
+```
+
+##Create Networks
+
+Create networks of up to $t$ highly correlated genes with at most $m$ neighbors
+```{r CreateNetworks}
+m <- 4    #Minimum number of neighbors
+t <- 9    #Maximum number of neighbors
+cor.thresh <- 0.8   #Correlation threshold to be considered a neighbor
+
+Network.genes <- list()     #The first index is the anchor gene
+Network.Exp <- list()       #Raw gene expression of genes in the network
+count <- 1
+for (g in 1:p) {
+  G.g <- G.centered[g,]
+  corr.g <- G.g %*% t(G.centered) / n.ind
+  corr.g <- corr.g / corr.g[g]
+  ind.g <- which(abs(corr.g) >= cor.thresh)
+  if (length(ind.g) >= m+1) {
+    ind.g.sorted <- order(-corr.g)[1:min(t+1, length(ind.g))]
+    Network.genes[[count]] <- ind.g.sorted
+    Network.Exp[[count]] <- G.centered[ind.g.sorted,]   #an n.nei + 1 x n.ind matrix
+    count <- count + 1
+  }
+}
+n.networks <- count - 1
+```
+
+##Simulate and Analyze Data
+
+Define parameters for simulation
+```{r SimulationParameters}
+theta <- 0.4    #effect size = theta * standard deviation
+maf <- 0.1      #minor allele frequency
+D <- c(1)    #Direct effect indices
+I <- c(2:m)    #Indirect effect indices
+lambda <- 0.9        #Shrinkage parameter for indirect effects
+
+n.D <- length(D)
+n.I <- length(I)
+
+###Some Parameters for the Gibbs Sampler###
+n.iter <- 2000
+n.burn <- 1000
+theta.gibbs <- c(0.5,0.5,0.5)  #If Dirichlet = T, this is the prior on alpha. Otherwise, this is proportional to the probability of unaffected, indirectly affected, directly affected by the cis-eQTL
+Dirichlet <- T
+
+sigma.a <- c(0.2, 0.4, 0.6)    		#Prior sd's on effect; used in BF calculation
+weights.sigma <- c(1,1,1)					#Relative weights of each element of sigma.a
+```
+
+Simulate and analyze data
+```{r SimulateData}
+SimResults.cgm <- list()     #posterior probability unaffected from CGM's method (condition on Sigma)
+SimResults.stephens <- list()      #posterior probability unaffected from Matthew's method (Wishart prior on Sigma)
+for (ind.net in 1:n.networks) {
+  net.genes <- Network.genes[[ind.net]]
+  raw.expr <- Network.Exp[[ind.net]]
+  
+  n.nei <- nrow(raw.expr) - 1
+  m.wishart <- n.nei + 1    ##DOF used in Wishart prior in Bayes Factor analysis
+  U <- ((m+1):(n.nei+1))
+  n.U <- length(U)
+  
+  X.genotype <- rbinom(n.ind, 1, maf) + rbinom(n.ind, 1, maf)   #Genotype vector
+  
+  Sigma.net <- raw.expr %*% t(raw.expr) / n.ind   #Covariance matrix for the simulated network (needed for indirect effects)
+  Sigma.12 <- Sigma.net[I, c(D, U)]
+  Sigma.22 <- Sigma.net[c(D, U), c(D, U)]
+  tmp.vec <- lambda * Sigma.12 %*% cbind( solve(Sigma.22, c(rep(1, n.D), rep(0, n.U))) )
+  
+  effect.size <- theta * Sigma.net[1,1]    #Effect of genotype at source gene
+  
+  mu.D <- effect.size * matrix( rep(X.genotype, n.D), nrow=n.D, ncol=n.ind, byrow=T )   #Mean for direct effect
+  mu.I <- effect.size * lambda * cbind(tmp.vec) %*% rbind(X.genotype)    #Mean for indirect effects
+  
+  Y.sim <- raw.expr
+  Y.sim[D,] <- Y.sim[D,] + mu.D
+  Y.sim[I,] <-  Y.sim[I,] + mu.I   #A (n.nei + 1) x n.ind matrix
+  
+  suff.stat <- Suff.stat(t(Y.sim), X.genotype)
+  
+  gibbs.cgm <- Gibbs.dir.cgm(n.iter, n.burn, suff.stat, D[1], n.ind, sigma.a, weights.sigma, theta=theta.gibbs, dirichlet=Dirichlet, update.lambda=F)
+  gibbs.stephens <- Gibbs.dir.1(n.iter, n.burn, suff.stat, D[1], n.ind, sigma.a, weights.sigma, m.wishart, theta.gibbs, Dirichlet)
+  
+  SimResults.cgm[[ind.net]] <- gibbs.cgm$post.mean.U
+  SimResults.stephens[[ind.net]] <- gibbs.stephens$post.mean.U
+}
+```
+
+##Visualize Simulation Results
+Look at:
+1.) estimated conditional FDR vs. true FDR for both CGM's and Matthew's models
+2.) True positive rate as a function of true FDR for both CGM's and Matthew's models
+
+```{r VisualizeData}
+post.U.D.cgm <- c()
+post.U.I.cgm <- c()
+post.U.U.cgm <- c()
+post.U.D.stephens <- c()
+post.U.I.stephens <- c()
+post.U.U.stephens <- c()
+
+for (ind.net in 1:n.networks) {
+  post.U.cgm <- SimResults.cgm[[ind.net]]
+  post.U.stephens <- SimResults.stephens[[ind.net]]
+  
+  n.nei <- length(post.U.cgm) - 1
+  U <- ((m+1):(n.nei+1))
+  n.U <- length(U)
+  
+  if (n.D > 1) {
+    post.U.D.cgm <- c(post.U.D.cgm, post.U.cgm[2:n.D])
+  }
+  post.U.I.cgm <- c(post.U.I.cgm, post.U.cgm[I])
+  post.U.U.cgm <- c(post.U.U.cgm, post.U.cgm[U])
+  
+  if (n.D > 1) {
+    post.U.D.stephens <- c(post.U.D.stephens, post.U.stephens[2:n.D])
+  }
+  post.U.I.stephens <- c(post.U.I.stephens, post.U.stephens[I])
+  post.U.U.stephens <- c(post.U.U.stephens, post.U.stephens[U])
+}
+
+all.data.cgm <- c(post.U.D.cgm, post.U.I.cgm, post.U.U.cgm); order.data.cgm <- order(all.data.cgm)   #Posterior probabilities genes are UNAFFECTED by SNP
+gene.label.cgm <- c(rep(2, (n.D-1)*n.networks), rep(1, n.I*n.networks), rep(0, length(all.data.cgm) - (n.D-1)*n.networks - n.I*n.networks))[order.data.cgm]
+all.data.cgm <- sort(all.data.cgm)
+
+all.data.stephens <- c(post.U.D.stephens, post.U.I.stephens, post.U.U.stephens); order.data.stephens <- order(all.data.stephens)   #Posterior probabilities genes are UNAFFECTED by SNP
+gene.label.stephens <- c(rep(2, (n.D-1)*n.networks), rep(1, n.I*n.networks), rep(0, length(all.data.stephens) - (n.D-1)*n.networks - n.I*n.networks))[order.data.stephens]
+all.data.stephens <- sort(all.data.stephens)
+
+fdr.all.cgm <- Cond.FDR(all.data.cgm)
+fdr.labels.all.cgm <- FDR.labels(gene.label.cgm)
+sens.all.cgm <- Sens.labels(gene.label.cgm)
+plot(fdr.all.cgm, fdr.labels.all.cgm, xlab="Conditional False Discovery Rate From Gibbs Sampler", ylab="True False Discovery Rate", main="False Discovery Rate in CGM's Method", type="l")
+abline(a=0,b=1, col="red")
+plot(fdr.labels.all.cgm, sens.all.cgm, xlab="True False Discovery Rate", ylab="Sensitivity = Fraction of Indirect and Directly Affected Genes Captured", main="ROC Plot for CGM's Method", type="l")
+hist(1 - post.U.I.cgm, xlab="Posterior Probability Gene is Affected by SNP", main="Indirect Effect Sensitivity in CGM's Method")
+
+fdr.all.stephens <- Cond.FDR(all.data.stephens)
+fdr.labels.all.stephens <- FDR.labels(gene.label.stephens)
+sens.all.stephens <- Sens.labels(gene.label.stephens)
+plot(fdr.all.stephens, fdr.labels.all.cgm, xlab="Conditional False Discovery Rate From Gibbs Sampler", ylab="True False Discovery Rate", main="False Discovery Rate in Matthew's Method", type="l")
+abline(a=0,b=1, col="red")
+plot(fdr.labels.all.stephens, sens.all.stephens, xlab="True False Discovery Rate", ylab="Sensitivity = Fraction of Indirect and Directly Affected Genes Captured", main="ROC Plot for Matthews's Method", type="l")
+hist(1 - post.U.I.stephens, xlab="Posterior Probability Gene is Affected by SNP", main="Indirect Effect Sensitivity in Matthews's Method")
+```
+
+##Conclusion
+
+We see that if we use real data as residuals and no indirect effect shrinkage (i.e. $\lambda = 1$), we get the right answer using both models assuming moderate effect sizes (standardize effect size $=$ 0.4 $\times$ sd of expression for anchor gene). For $\lambda < 1$ (data shown above for $\lambda = 0.9$), we have a more difficult time recovering indirect effects, as expected.
+
+## Session information
+
+```{r info}
+sessionInfo()
+```
