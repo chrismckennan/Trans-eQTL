@@ -1,0 +1,12 @@
+Tissue	braincortex
+N_samples	95
+Chr	19
+Gene	ENSG00000183207.8
+SNP	rs11558795
+Gene_list	ENSG00000183207.8	ENSG00000181789.10
+Gene expression stats (Y^T * Y): 
+87.3684685627	54.622075114
+54.622075114	87.3684685627
+Genotype stats (X^T * X): 	17.5483071579
+Gene expression - Genotype stats (Y^T * X): 
+-17.6910115673	-9.24100144146

@@ -1,0 +1,12 @@
+Tissue	skinsunexposedlowerleg
+N_samples	299
+Chr	19
+Gene	ENSG00000142544.6
+SNP	rs11671800
+Gene_list	ENSG00000245848.2	ENSG00000142544.6
+Gene expression stats (Y^T * Y): 
+289.277195889	173.882557335
+173.882557335	289.277195889
+Genotype stats (X^T * X): 	84.5285145619
+Gene expression - Genotype stats (Y^T * X): 
+13.5450387529	28.391346899

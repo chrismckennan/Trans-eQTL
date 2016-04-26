@@ -1,0 +1,12 @@
+Tissue	skinnotsunexposedsuprapubic
+N_samples	196
+Chr	2
+Gene	ENSG00000143882.5
+SNP	rs7603290
+Gene_list	ENSG00000143882.5	ENSG00000131037.10
+Gene expression stats (Y^T * Y): 
+187.052919224	122.422229425
+122.422229425	187.052919224
+Genotype stats (X^T * X): 	74.0691714082
+Gene expression - Genotype stats (Y^T * X): 
+31.7147466647	20.0181761675
