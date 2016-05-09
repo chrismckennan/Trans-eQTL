@@ -23,3 +23,7 @@ For now, these data were analyzed unconditional on $\Sigma$, using an improper W
 *  [Adipose Tissue, 0.80 correlation cutoff](AnalyzeSummaryData_Adipose80.html)
 *  [Muscle Skeletal, 0.80 correlation cutoff](AnalyzeSummaryData_muscleskeletal80.html)
 *  [Whole Blood, 0.80 correlation cutoff](AnalyzeSummaryData_wholeblood80.html)
+
+## Check Model with Real Data
+We would expect gene networks to be similar in similar tissues. 
+

@@ -1,0 +1,12 @@
+Tissue	braincerebellum
+N_samples	102
+Chr	6
+Gene	ENSG00000124602.5
+SNP	rs6918969
+Gene_list	ENSG00000124602.5	ENSG00000185730.3
+Gene expression stats (Y^T * Y): 
+94.2403082206	63.384867492
+63.384867492	94.2403082206
+Genotype stats (X^T * X): 	33.2549019608
+Gene expression - Genotype stats (Y^T * X): 
+19.0573093125	17.4595858739

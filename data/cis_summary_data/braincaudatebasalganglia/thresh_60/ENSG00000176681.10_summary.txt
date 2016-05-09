@@ -1,0 +1,12 @@
+Tissue	braincaudatebasalganglia
+N_samples	98
+Chr	17
+Gene	ENSG00000176681.10
+SNP	rs113249873
+Gene_list	ENSG00000176681.10	ENSG00000238083.3
+Gene expression stats (Y^T * Y): 
+90.3124531138	75.4466373103
+75.4466373103	90.3124531138
+Genotype stats (X^T * X): 	28.778858
+Gene expression - Genotype stats (Y^T * X): 
+37.7920660672	38.0028802531
