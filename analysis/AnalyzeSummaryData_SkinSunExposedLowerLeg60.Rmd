@@ -1,0 +1,119 @@
+s---
+title: "Analyze GTex Data with Brian's Summary Data"
+author: "Chris McKennan"
+date: '2016-05-09'
+output: html_document
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+## Objectives
+
+This file takes Brian's lower leg sun exposed tissue (correlation threshold = 0.60) GTex summary files and performs a Gibbs sampler to estimate the posterior probability each gene in the network is UNAFFECTED by the genotype at the SNP. Since the threshold is only 0.60, I will at most 9 genes that are most correlated with the source gene. The results are store in '../output', with the same directory structure as the summary data. The only input parameter is the input directory name with summary data and the output directory, which stores the Gibbs sampler posterior probability estimates. After the code finishes, a Perl script will modify the Gibbs sampler output so they have the same information as the summary data files.
+
+
+## Grab functions
+
+Source Gibbs Sampler and Bayes Factor functions.
+
+```{r Grab R functions}
+source("../R/SimulateNetworkExpression.R")  #Compute Bayes factors
+source("../R/directionality_CGM.R")    #Gibbs Sampler
+library('gtools')
+```
+
+## The directories to grab and store output files
+
+Directory in which to perform the analysis. Note that this is the adipose tissue. Results are saved in output, with the same directory structure as the summary data were stored in data
+
+```{r Initialize Directories}
+directory.in <- '../data/cis_summary_data/skinsunexposedlowerleg/thresh_60'
+directory.out <- '../output/cis_summary_data/skinsunexposedlowerleg/thresh_60'
+run_gibbs = TRUE;   #Whether or not to run the Gibbs sampler. If not, I just look for the file in 'directory.out' to get the necessary information 
+```
+
+## Create directory structure to house output files
+
+```{r Create Directory Structure}
+if (!file.exists(directory.out)) {
+  dir.string <- strsplit(directory.out, split="/")[[1]]
+  tmp.string = dir.string[1]
+  for (i in 2:length(dir.string)) {
+    tmp.string = file.path(tmp.string, dir.string[i])
+    if (!file.exists(tmp.string)) {
+      dir.create(tmp.string)
+    }
+  }
+}
+```
+
+
+## Run the analysis on all of the files in the directory
+
+```{r GibbsSampler_Parallel}
+max.genes <- 9        #Maximum number of genes to be considered neighbors of the source gene
+all_files <- list.files(directory.in)
+all.post.probs <- c()
+
+if (run_gibbs) {
+  ind.files.use <- (1:length(all_files))
+  no_cores <- detectCores() - 1
+  cluster <- makeCluster(no_cores)
+  clusterExport(cluster, c('directory.in', 'max.genes', 'directory.out'))
+  clusterEvalQ(cluster, c(library(gtools), source("../R/directionality_CGM.R"), source("../R/SimulateNetworkExpression.R")))
+  out.parallel <- parLapply(cluster, all_files[ind.files.use], function(file) { Gibbs.par(file, directory.in, directory.out, max.genes) })
+  stopCluster(cluster)
+  for (i in 1:length(out.parallel)) {
+    all.post.probs <- c(all.post.probs, out.parallel[[i]])
+  }
+} else {
+  gibbs.file = readLines(out.file)
+  tmp.probs <- as.numeric(strsplit(gibbs.file[8], split='\t', perl=T)[[1]])
+  all.post.probs <- c(all.post.probs, tmp.probs[!is.na(tmp.probs)])  
+}
+
+```
+
+
+##Results
+
+Plot an estimated ROC curve:
+```{r ROC}
+all.post.probs <- sort(all.post.probs)   #Posterior prob a gene is NOT a trans eQTL
+est.trans <- sum(1-all.post.probs)   #Expected number of trans genes affected (given the data)
+
+est.FDR <- rep(0, length(all.post.probs))
+est.FDR[1] <- all.post.probs[1]
+est.sens <- rep(0, length(all.post.probs))
+est.sens[1] <- (1 - all.post.probs[1])/est.trans
+for (i in 2:length(est.FDR)) {
+  est.FDR[i] <- ((i-1)*est.FDR[i-1] + all.post.probs[i])/i
+  est.sens[i] <- est.sens[i-1] + (1 - all.post.probs[i])/est.trans
+}
+plot(est.FDR, est.sens, type="l", main='Estimated ROC Curve for Affected Genes Trans to SNP in Adipose', xlab="Estimated (conditional) False Discovery Rate", ylab='Estimated Sensitivity', xlim=c(0, max(0.6, est.FDR)))
+lines(seq(max(est.FDR), 1, length=100), rep(1, 100))
+```
+
+Histgram of posterior probabilities that a gene trans to SNP is affected by SNP
+```{r Histogram}
+hist(1-all.post.probs, breaks=30, xlab="Posterior Probability Gene Trans to SNP is AFFECTED by SNP", ylab="Frequency", main="Histogram of Posterior Probabilities a Trans Gene is AFFECTED by SNP", xlim=c(0,1))
+```
+
+## Add additional information to output files
+If the information already exists, OrganizeGibbs.pl leaves the file alone
+
+```bash
+perl OrganizeGibbs.pl ../data/cis_summary_data/skinsunexposedlowerleg/thresh_60 ../output/cis_summary_data/skinsunexposedlowerleg/thresh_60
+```
+
+## Session information
+
+```{r info}
+sessionInfo()
+```

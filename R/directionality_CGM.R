@@ -129,3 +129,64 @@ Gibbs.dir.1 <- function(n.iter, n.burn, suff.stat, D.gam, n.ind, sigma.a, weight
 	
 	return(list(post.mean.U=post.mean, post.mean.I=post.mean.I, post.mean.D=post.mean.D, D.ind=D.gam, post.probs=post.prob.nodes))
 }
+
+
+##Return the indices of the n.corr most correlated genes with the source gene (this will include the source gene)
+Corr.ind <- function(YtY, source.gene, n.corr) {
+	Corr <- diag( 1/sqrt(diag(YtY)) ) %*% YtY %*% diag( 1/sqrt(diag(YtY)) )
+	return(order(-abs(Corr[source.gene,]))[1:min((n.corr+1), nrow(YtY))])
+}
+
+##Function to create Gibbs sample output. This wil be the function to parallelize when running many Gibbs samplers
+#The function writes an output file and will be parrellized
+Gibbs.par <- function(file, directory.in, directory.out, max.genes) {
+	file.path <- paste(directory.in, file, sep="/")
+	all_data = readLines(file.path)
+	tissue <- strsplit(all_data[1], split='\t', perl=T)[[1]][2]
+	n.ind <- as.numeric(strsplit(all_data[2], split='\t', perl=T)[[1]][2])   #Number of independent measurements
+	chr <- as.numeric(strsplit(all_data[3], split='\t', perl=T)[[1]][2])    #Chromosome number
+	gene <- strsplit(all_data[4], split='\t', perl=T)[[1]][2]    #Gene of interest
+	SNP <- strsplit(all_data[5], split='\t', perl=T)[[1]][2]    #eQTL of interest
+	Gene.names <- strsplit(all_data[6], split='\t', perl=T)[[1]][2:length(strsplit(all_data[6], split='\t', perl=T)[[1]])]   #Column names for Y'Y
+	n.genes <- length(Gene.names)    #Number of genes in the network
+	source.ind.all.g <- which(Gene.names == gene)
+	
+	YtY <- array(NA, dim=c(n.genes, n.genes))   #Y'Y
+	for (r in 1:n.genes) {
+		YtY[r,] <- as.numeric(strsplit(all_data[7+r], split='\t', perl=T)[[1]])
+	}
+	ind.use.g <- Corr.ind(YtY, source.ind.all.g, max.genes)
+	YtY.use.g <- YtY[ind.use.g, ind.use.g]
+	
+	sxx <- as.numeric(strsplit(all_data[8+n.genes], split='\t', perl=T)[[1]][2])   #X'X, a scalar
+	YtX.use.g <- as.numeric(strsplit(all_data[10+n.genes], split='\t', perl=T)[[1]])[ind.use.g]    #Y'X, a vector
+	
+	suff.stat <- list(SYY = YtY.use.g/n.ind, sxx = sxx/n.ind, SYX = YtX.use.g/n.ind, SY1 = rep(0, length(ind.use.g)), mu.g = 0)
+	
+	n.genes.use <- length(ind.use.g)
+	if (n.genes.use <= 15) {
+		n.iter <- 3000
+		n.burn <- 1000
+	} else {
+	if (n.genes.use <= 25) {
+		n.iter <- 4000
+		n.burn <- 2000
+	} else {
+		n.iter <- 5000
+		n.burn <- 2500
+		}
+	}
+	sigma.a <- c(0.1, 0.4)
+	weights.sigma <- c(1, 1)
+	
+	out.file = file.path(directory.out, sub("(summary)", '\\1.gibbs', file, perl=T))
+	
+	gibbs <- Gibbs.dir.1(n.iter, n.burn, suff.stat, 1, n.ind, sigma.a, weights.sigma, n.genes.use-1)
+	pup.all.g <- rep(NA, n.genes)
+	pup.all.g[ind.use.g] <- gibbs$post.mean.U     #Posterior probability a gene is UNAFFECTED by the source gene
+	
+	gibbs.mat <- rbind(pup.all.g)
+	colnames(gibbs.mat) <- Gene.names
+	write.table(gibbs.mat, out.file, col.names=T, row.names=F, append=F, quote=F, sep="\t")
+	pup.all.g[!is.na(pup.all.g)]
+}

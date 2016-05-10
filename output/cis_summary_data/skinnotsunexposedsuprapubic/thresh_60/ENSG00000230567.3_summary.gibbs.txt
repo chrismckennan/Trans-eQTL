@@ -1,0 +1,8 @@
+Tissue	skinnotsunexposedsuprapubic
+N_samples	196
+Chr	8
+Gene	ENSG00000230567.3
+SNP	rs62530368
+Posterior probability each gene is UNAFFECTED by SNP:
+ENSG00000235173.2	ENSG00000230567.3
+0.064	NA

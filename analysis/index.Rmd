@@ -25,5 +25,7 @@ For now, these data were analyzed unconditional on $\Sigma$, using an improper W
 *  [Whole Blood, 0.80 correlation cutoff](AnalyzeSummaryData_wholeblood80.html)
 
 ## Check Model with Real Data
-We would expect gene networks to be similar in similar tissues. 
+We would expect gene networks to be similar in similar tissues.
+
+*  [Skin, 0.60 correlation cutoff](AnalyzeSummaryData_SkinOverlap60.html)
 

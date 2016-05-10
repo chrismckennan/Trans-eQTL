@@ -1,0 +1,8 @@
+Tissue	braincaudatebasalganglia
+N_samples	98
+Chr	4
+Gene	ENSG00000070190.8
+SNP	rs62304993
+Posterior probability each gene is UNAFFECTED by SNP:
+ENSG00000185811.12	ENSG00000070190.8
+0.0535	NA

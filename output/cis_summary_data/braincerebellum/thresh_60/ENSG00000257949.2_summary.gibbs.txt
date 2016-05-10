@@ -1,0 +1,8 @@
+Tissue	braincerebellum
+N_samples	102
+Chr	17
+Gene	ENSG00000257949.2
+SNP	rs2665967
+Posterior probability each gene is UNAFFECTED by SNP:
+ENSG00000257949.2	ENSG00000250506.2
+NA	0

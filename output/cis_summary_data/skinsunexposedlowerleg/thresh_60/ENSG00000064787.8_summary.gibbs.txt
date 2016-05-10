@@ -1,0 +1,8 @@
+Tissue	skinsunexposedlowerleg
+N_samples	299
+Chr	20
+Gene	ENSG00000064787.8
+SNP	rs6097776
+Posterior probability each gene is UNAFFECTED by SNP:
+ENSG00000168314.13	ENSG00000131095.7	ENSG00000064787.8
+0.0535	0.133	NA

@@ -1,0 +1,3 @@
+SourceGene	Shared_trans-eQTLs	Neighbors_T1	Neighbors_T2	rans-eQTLs_T1	trans-eQTLs_T2
+#trans-eQTLs_Both	trans-eQTLs_T1	trans-eQTLs_T2
+#0	0	2115

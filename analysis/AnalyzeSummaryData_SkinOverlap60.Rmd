@@ -1,0 +1,76 @@
+s---
+title: "Analyze GTex Data with Brian's Summary Data"
+author: "Chris McKennan"
+date: '2016-05-09'
+output: html_document
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+## Objectives
+
+I want to look at the trans eQTLs that we identify in both sun-exposed lower leg and non-sun-exposed suprapubic skin. Since these tissues are similar, we should (in theory) see similar trans-eQTLs in both tissues.
+
+## Determine Overlap in Tissues
+
+The perl script Overlap2Networks.pl looks for overlap in eQTLs between two tissues. It gives the number of trans-eQTLs that are shared across tissues. It also looks for gene-gene correlation networks that are similar across tissues and looks at the eQTL sharing in those networks. The idea here is if we have two identical networks defined apriori, then we should see similar trans-eQTLs in those networks across tissues.
+
+```bash
+perl Overlap2Networks.pl ../output/cis_summary_data/skinnotsunexposedsuprapubic/thresh_60 ../output/cis_summary_data/skinsunexposedlowerleg/thresh_60
+```
+13% overlap, 193 shared gene-gene correlation networks
+
+```bash
+ perl Overlap2Networks.pl ../output/cis_summary_data/muscleskeletal/thresh_80 ../output/cis_summary_data/adiposesubcutaneous/thresh_80
+```
+13% overlap, 23 shared gene-gene correlation networks
+
+```bash
+perl Overlap2Networks.pl ../output/cis_summary_data/braincaudatebasalganglia/thresh_60 ../output/cis_summary_data/braincaudatebasalganglia/thresh_60
+```
+There is NO overlap in these two brain tissues, 0 shared gene-gene correlation networks
+
+
+## Grab functions
+
+Source Gibbs Sampler and Bayes Factor functions.
+
+```{r Grab R functions}
+source("../R/SimulateNetworkExpression.R")  #Compute Bayes factors
+source("../R/directionality_CGM.R")    #Gibbs Sampler
+library('gtools')
+```
+
+## Input file
+
+```{r InitializePath}
+overlap.file <- "skinnotsunexposedsuprapubic_skinsunexposedlowerleg.OverlapeQTL.txt"
+X <- data.frame(read.table(overlap.file, sep="\t", dec=".", comment.char="#", header=T))
+```
+
+## Plot Results
+
+```{r PlotResults}
+ind.nonzero <- which(X$trans.eQTLs_T1 != 0 & X$trans.eQTLs_T2 != 0)
+X.nonzero <- X[ind.nonzero,]
+N.eQTLs <- apply(cbind(X.nonzero$trans.eQTLs_T1, X.nonzero$trans.eQTLs_T1), 1, min)
+ind.1 <- which(N.eQTLs == 1)
+frac.shared <- X.nonzero$Shared_trans.eQTLs/N.eQTLs
+frac.shared.no1 <- frac.shared[-ind.1]
+
+hist(frac.shared, main="Fraction of eQTLs that are Shared in Overlapping Networks", xlab="#Shared/#trans-eQTLs")
+hist(frac.shared.no1, main="Fraction of eQTLs that are Shared in Overlapping Networks, no singletons", xlab="#Shared/#trans-eQTLs")
+```
+
+
+## Session information
+
+```{r info}
+sessionInfo()
+```
