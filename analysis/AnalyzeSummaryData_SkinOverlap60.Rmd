@@ -59,7 +59,7 @@ X <- data.frame(read.table(overlap.file, sep="\t", dec=".", comment.char="#", he
 ```{r PlotResults}
 ind.nonzero <- which(X$trans.eQTLs_T1 != 0 & X$trans.eQTLs_T2 != 0)
 X.nonzero <- X[ind.nonzero,]
-N.eQTLs <- apply(cbind(X.nonzero$trans.eQTLs_T1, X.nonzero$trans.eQTLs_T1), 1, min)
+N.eQTLs <- apply(cbind(X.nonzero$trans.eQTLs_T1, X.nonzero$trans.eQTLs_T2), 1, min)
 ind.1 <- which(N.eQTLs == 1)
 frac.shared <- X.nonzero$Shared_trans.eQTLs/N.eQTLs
 frac.shared.no1 <- frac.shared[-ind.1]
